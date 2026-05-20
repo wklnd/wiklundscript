@@ -1,0 +1,47 @@
+{
+  "name": "wscript-language-support",
+  "displayName": "wscript Language Support",
+  "description": "Syntax highlighting and language configuration for wscript files.",
+  "version": "0.1.0",
+  "publisher": "wscript",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:wscript",
+    "onCommand:wscript.runScript"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "wscript.runScript",
+        "title": "Run wscript File"
+      }
+    ],
+    "languages": [
+      {
+        "id": "wscript",
+        "aliases": [
+          "wscript",
+          "WScript"
+        ],
+        "extensions": [
+          ".ws",
+          ".wscript"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "wscript",
+        "scopeName": "source.wscript",
+        "path": "./syntaxes/wscript.tmLanguage.json"
+      }
+    ]
+  }
+}
