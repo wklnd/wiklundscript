@@ -1,4 +1,3 @@
-// src/interpreter.c
 #include "interpreter.h"
 #include "error.h"
 

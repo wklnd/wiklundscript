@@ -1,4 +1,3 @@
-// src/parser.c
 #include "parser.h"
 #include "error.h"
 

@@ -1,4 +1,3 @@
-// src/main.c
 #include "lexer.h"
 #include "parser.h"
 #include "interpreter.h"

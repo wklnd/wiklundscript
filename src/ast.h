@@ -1,9 +1,8 @@
-// src/ast.h
 #pragma once
 
 #include <stddef.h>
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+//  Types 
 
 typedef enum {
     TYPE_STRING,
@@ -13,7 +12,7 @@ typedef enum {
     TYPE_UNKNOWN,
 } TypeName;
 
-// ─── Expressions ─────────────────────────────────────────────────────────────
+//  Expressions 
 
 typedef enum {
     EXPR_LITERAL,
@@ -62,7 +61,7 @@ struct Expr {
     };
 };
 
-// ─── Statements ──────────────────────────────────────────────────────────────
+//  Statements 
 
 typedef enum {
     STMT_VAR_DECL,
@@ -170,14 +169,14 @@ struct Stmt {
     };
 };
 
-// ─── Program ─────────────────────────────────────────────────────────────────
+//  Program 
 
 typedef struct {
     Stmt  **stmts;
     size_t  count;
 } Program;
 
-// ─── Memory ──────────────────────────────────────────────────────────────────
+//  Memory 
 
 void expr_free(Expr *expr);
 void stmt_free(Stmt *stmt);

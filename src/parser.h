@@ -1,4 +1,3 @@
-// src/parser.h
 #pragma once
 
 #include "lexer.h"

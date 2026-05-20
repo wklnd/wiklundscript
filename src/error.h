@@ -1,4 +1,3 @@
-// src/error.h
 #pragma once
 
 #define _POSIX_C_SOURCE 200809L

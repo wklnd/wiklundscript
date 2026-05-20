@@ -1,10 +1,9 @@
-// src/ast.c
 #include "ast.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-// ─── Expression Cleanup ───────────────────────────────────────────────────────
+//  Expression Cleanup 
 
 void expr_free(Expr *expr) {
     if (!expr) return;
@@ -41,7 +40,7 @@ void expr_free(Expr *expr) {
     free(expr);
 }
 
-// ─── Statement Cleanup ───────────────────────────────────────────────────────
+//  Statement Cleanup 
 
 void stmt_free(Stmt *stmt) {
     if (!stmt) return;
@@ -133,7 +132,7 @@ void stmt_free(Stmt *stmt) {
     free(stmt);
 }
 
-// ─── Program Cleanup ─────────────────────────────────────────────────────────
+//  Program Cleanup 
 
 void program_free(Program *program) {
     if (!program) return;

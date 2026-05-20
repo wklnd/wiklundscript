@@ -1,4 +1,3 @@
-// src/interpreter.h
 #pragma once
 
 #include "ast.h"

@@ -1,4 +1,3 @@
-// src/lexer.c
 #include "lexer.h"
 #include "error.h"
 
@@ -7,7 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 
-// ─── Internal State ───────────────────────────────────────────────────────────
+//  Internal State 
 
 typedef struct {
     const char *source;
@@ -16,7 +15,7 @@ typedef struct {
     TokenList   list;
 } LexerState;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers 
 
 static void push_token(LexerState *s, TokenType type, const char *value, int line) {
     if (s->list.count >= s->list.capacity) {
@@ -54,7 +53,7 @@ static void skip_comment(LexerState *s) {
     }
 }
 
-// ─── Readers ──────────────────────────────────────────────────────────────────
+//  Readers 
 
 static void read_string(LexerState *s) {
     int line = s->line;
@@ -131,7 +130,7 @@ static void read_word(LexerState *s) {
     free(buf);
 }
 
-// ─── Main Tokenizer ───────────────────────────────────────────────────────────
+//  Main Tokenizer 
 
 TokenList lexer_tokenize(const char *source) {
     LexerState s = {

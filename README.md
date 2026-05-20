@@ -1,6 +1,4 @@
-# wscript 🎯
-
-A simple, fun scripting language for beginners. Write your ideas in clean, readable code!
+# wscript 
 
 **Version:** 0.1.0
 
@@ -371,12 +369,12 @@ print(mybook.pages + " pages")
 
 ## Tips & Tricks
 
-✨ **String Concatenation**: Mix types freely with `+`
+**String Concatenation**: Mix types freely with `+`
 ```
 print("The answer is " + 42)  # Output: The answer is 42
 ```
 
-✨ **Nested Conditions**: Use multiple `if/else` blocks
+**Nested Conditions**: Use multiple `if/else` blocks
 ```
 if condition1
   if condition2
@@ -385,14 +383,14 @@ if condition1
 end
 ```
 
-✨ **Loop Tricks**: Use the iterator variable in calculations
+**Loop Tricks**: Use the iterator variable in calculations
 ```
 repeat 10 as i
   print(i * i)  # Print squares: 0, 1, 4, 9, 16, ...
 end
 ```
 
-✨ **Reusable Code**: Write functions to avoid repetition
+**Reusable Code**: Write functions to avoid repetition
 ```
 func say msg
   print(">>> " + msg)
@@ -427,12 +425,4 @@ x = 10         # ERROR!
 
 ---
 
-## Get Inspired
-
-Try building:
-- 🎲 A dice roller
-- 📊 A simple calculator
-- 🏆 A scoring system
-- 📝 A hello-world program for each day of the week
-
-Have fun coding! 🚀
+why? why not

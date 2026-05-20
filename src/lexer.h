@@ -1,4 +1,3 @@
-// src/lexer.h
 #pragma once
 
 #include <stddef.h>
