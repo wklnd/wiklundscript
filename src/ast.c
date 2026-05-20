@@ -124,6 +124,11 @@ void stmt_free(Stmt *stmt) {
             free(stmt->object_decl.fields);
             break;
 
+        case STMT_IMPORT:
+            free(stmt->import_stmt.module);
+            free(stmt->import_stmt.field);
+            break;
+
         case STMT_RETURN:
             expr_free(stmt->ret.value);
             break;

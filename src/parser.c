@@ -449,6 +449,19 @@ static Stmt *parse_object_decl(Parser *p) {
     return s;
 }
 
+static Stmt *parse_import(Parser *p) {
+    int line = peek(p)->line;
+    advance(p); // consume 'import'
+    Token *module = expect(p, TOKEN_IDENTIFIER, "expected module name");
+    expect(p, TOKEN_DOT, "expected '.'");
+    Token *field = expect(p, TOKEN_IDENTIFIER, "expected field name");
+
+    Stmt *s = make_stmt(STMT_IMPORT, line);
+    s->import_stmt.module = strdup(module->value);
+    s->import_stmt.field  = strdup(field->value);
+    return s;
+}
+
 static Stmt *parse_return(Parser *p) {
     int line = peek(p)->line;
     advance(p); // consume 'return'
@@ -518,6 +531,7 @@ static Stmt *parse_statement(Parser *p) {
         case TOKEN_REPEAT:     return parse_repeat(p);
         case TOKEN_FUNC:       return parse_func_decl(p);
         case TOKEN_OBJECT:     return parse_object_decl(p);
+        case TOKEN_IMPORT:     return parse_import(p);
         case TOKEN_RETURN:     return parse_return(p);
         case TOKEN_IDENTIFIER: return parse_identifier_stmt(p);
         default:

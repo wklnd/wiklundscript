@@ -1,26 +1,20 @@
-object Book {
-  title = String
-  author = String
-  pages = Int
-  read = Bool
-}
+import String.getStringLength
+import String.doStringConcat
+import String.doStringReverse
 
-var mybook = Book
-mybook.title = "The Hobbit"
-mybook.author = "Tolkien"
-mybook.pages = 310
-mybook.read = true
+var text = "Hello, World!"
+var reversed = doStringReverse(text)
+var combined = doStringConcat("Hello", " ", "WS")
+var len = getStringLength(text)
 
-print(mybook.title)
-print("by " + mybook.author)
-print(mybook.pages + " pages")
-print("Read: " + mybook.read)
+print("Original: " + text)
+print("Reversed: " + reversed)
+print("Combined: " + combined)
+print("Length: " + len)
 
 
-func say msg
-    print(">>> " +msg)
-end
-
-say("Hello")
-
-# End of the fun 
+if len == 13 
+    print("The text is 13 characters long.")
+else 
+    print("The text is not 13 characters long.")
+endss

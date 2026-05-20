@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <dlfcn.h>
 
 #define LOOP_LIMIT 100000
 
@@ -19,6 +20,11 @@ typedef enum {
 } ValKind;
 
 typedef struct Value Value;  // Forward declaration
+
+static Value make_string(const char *s);
+static Value make_int(long n);
+static Value make_float(double f);
+static char *value_to_string(Value v);
 
 typedef struct {
     char    *type_name;
@@ -96,6 +102,8 @@ typedef struct {
     size_t   param_count;
     Stmt   **body;
     size_t   body_count;
+    int      is_native;
+    const char *(*native)(size_t argc, const char **argv);
 } FuncEntry;
 
 typedef struct {
@@ -104,10 +112,82 @@ typedef struct {
     size_t     capacity;
 } FuncStore;
 
+typedef struct Interp Interp;
+
+static Value eval_expr(Interp *interp, Expr *expr);
+
 static void funcstore_init(FuncStore *fs) {
     fs->entries  = malloc(8 * sizeof(FuncEntry));
     fs->count    = 0;
     fs->capacity = 8;
+}
+
+static void funcstore_set_native(FuncStore *fs, const char *name,
+                                 const char *(*native)(size_t argc, const char **argv)) {
+    if (fs->count >= fs->capacity) {
+        fs->capacity *= 2;
+        fs->entries = realloc(fs->entries, fs->capacity * sizeof(FuncEntry));
+    }
+    fs->entries[fs->count++] = (FuncEntry){
+        .name = strdup(name),
+        .params = NULL,
+        .param_count = 0,
+        .body = NULL,
+        .body_count = 0,
+        .is_native = 1,
+        .native = native,
+    };
+}
+
+static Value value_from_native_result(const char *res) {
+    if (!res) return make_string("");
+
+    int is_float = 0;
+    int is_num = 1;
+    for (const char *p = res; *p; p++) {
+        if (*p == '.') { is_float = 1; continue; }
+        if (p == res && (*p == '+' || *p == '-')) continue;
+        if (*p < '0' || *p > '9') { is_num = 0; break; }
+    }
+
+    if (is_num) {
+        Value value = is_float ? make_float(atof(res)) : make_int((long)atol(res));
+        free((void *)res);
+        return value;
+    }
+
+    Value value = make_string(res);
+    free((void *)res);
+    return value;
+}
+
+static Value call_native(FuncEntry *func, Interp *interp, Expr **args, size_t arg_count) {
+    char **arg_strings = NULL;
+    if (arg_count > 0) {
+        arg_strings = malloc(arg_count * sizeof(char *));
+        for (size_t i = 0; i < arg_count; i++) {
+            Value arg = eval_expr(interp, args[i]);
+            arg_strings[i] = value_to_string(arg);
+        }
+    }
+
+    const char **argv = NULL;
+    if (arg_count > 0) {
+        argv = malloc(arg_count * sizeof(char *));
+        for (size_t i = 0; i < arg_count; i++) {
+            argv[i] = arg_strings[i];
+        }
+    }
+
+    const char *res = func->native(arg_count, argv);
+
+    for (size_t i = 0; i < arg_count; i++) {
+        free(arg_strings[i]);
+    }
+    free(arg_strings);
+    free(argv);
+
+    return value_from_native_result(res);
 }
 
 static FuncEntry *funcstore_get(FuncStore *fs, const char *name) {
@@ -149,6 +229,27 @@ typedef struct {
     size_t     capacity;
 } BlueprintStore;
 
+// Dynamic library handles
+typedef struct {
+    void **handles;
+    size_t count;
+    size_t capacity;
+} HandleStore;
+
+static void handlestore_init(HandleStore *hs) {
+    hs->handles = malloc(4 * sizeof(void *));
+    hs->count = 0;
+    hs->capacity = 4;
+}
+
+static void handlestore_push(HandleStore *hs, void *h) {
+    if (hs->count >= hs->capacity) {
+        hs->capacity *= 2;
+        hs->handles = realloc(hs->handles, hs->capacity * sizeof(void *));
+    }
+    hs->handles[hs->count++] = h;
+}
+
 static void blueprintstore_init(BlueprintStore *bs) {
     bs->entries  = malloc(8 * sizeof(Blueprint));
     bs->count    = 0;
@@ -179,13 +280,14 @@ static void blueprintstore_set(BlueprintStore *bs, const char *name,
 
 //  Interpreter State 
 
-typedef struct {
+struct Interp {
     VarStore       vars;
     FuncStore      funcs;
     BlueprintStore blueprints;
+    HandleStore    handles;
     int            returning;
     Value          return_value;
-} Interp;
+};
 
 //  Value Helpers 
 
@@ -406,6 +508,10 @@ static Value eval_expr(Interp *interp, Expr *expr) {
             FuncEntry *func = funcstore_get(&interp->funcs, expr->call.name);
             if (!func) ERROR_F(0, "undefined function '%s'", expr->call.name);
 
+            if (func->is_native) {
+                return call_native(func, interp, expr->call.args, expr->call.arg_count);
+            }
+
             VarStore prev = interp->vars;
             VarStore call_scope;
             varstore_init(&call_scope);
@@ -567,9 +673,52 @@ static void exec_stmt(Interp *interp, Stmt *stmt) {
             break;
         }
 
+        case STMT_IMPORT: {
+            const char *module = stmt->import_stmt.module;
+            const char *field  = stmt->import_stmt.field;
+
+            char libname[256];
+            snprintf(libname, sizeof(libname), "lib%s.so", module);
+
+            void *handle = dlopen(libname, RTLD_NOW);
+            if (!handle) {
+                // try without 'lib' prefix
+                snprintf(libname, sizeof(libname), "%s.so", module);
+                handle = dlopen(libname, RTLD_NOW);
+            }
+            if (!handle) {
+                snprintf(libname, sizeof(libname), "native/lib%s.so", module);
+                handle = dlopen(libname, RTLD_NOW);
+            }
+            if (!handle) {
+                snprintf(libname, sizeof(libname), "native/%s.so", module);
+                handle = dlopen(libname, RTLD_NOW);
+            }
+            if (!handle) {
+                ERROR_F(stmt->line, "failed to open module '%s': %s", module, dlerror());
+            }
+
+            char sym[256];
+            snprintf(sym, sizeof(sym), "%s_%s", module, field);
+            const char *(*fn)() = dlsym(handle, sym);
+            if (!fn) {
+                dlclose(handle);
+                ERROR_F(stmt->line, "symbol '%s' not found in module '%s'", sym, module);
+            }
+
+            funcstore_set_native(&interp->funcs, field, fn);
+            handlestore_push(&interp->handles, handle);
+            break;
+        }
+
         case STMT_FUNC_CALL: {
             FuncEntry *func = funcstore_get(&interp->funcs, stmt->func_call.name);
             if (!func) ERROR_F(stmt->line, "undefined function '%s'", stmt->func_call.name);
+
+            if (func->is_native) {
+                (void)call_native(func, interp, stmt->func_call.args, stmt->func_call.arg_count);
+                break;
+            }
 
             VarStore prev = interp->vars;
             VarStore call_scope;
@@ -638,10 +787,15 @@ void interpreter_run(Program *program) {
     varstore_init(&interp.vars);
     funcstore_init(&interp.funcs);
     blueprintstore_init(&interp.blueprints);
+    handlestore_init(&interp.handles);
 
     exec_block(&interp, program->stmts, program->count);
 
     varstore_free_entries(&interp.vars);
     free(interp.funcs.entries);
     free(interp.blueprints.entries);
+    for (size_t i = 0; i < interp.handles.count; i++) {
+        dlclose(interp.handles.handles[i]);
+    }
+    free(interp.handles.handles);
 }

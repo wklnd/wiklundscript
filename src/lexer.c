@@ -125,6 +125,7 @@ static void read_word(LexerState *s) {
     else if (strcmp(buf, "return") == 0) type = TOKEN_RETURN;
     else if (strcmp(buf, "true")   == 0) type = TOKEN_TRUE;
     else if (strcmp(buf, "false")  == 0) type = TOKEN_FALSE;
+    else if (strcmp(buf, "import") == 0) type = TOKEN_IMPORT;
 
     push_token(s, type, buf, line);
     free(buf);

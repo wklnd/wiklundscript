@@ -74,6 +74,7 @@ typedef enum {
     STMT_FUNC_DECL,
     STMT_FUNC_CALL,
     STMT_OBJECT_DECL,
+    STMT_IMPORT,
     STMT_RETURN,
 } StmtKind;
 
@@ -161,6 +162,12 @@ struct Stmt {
             FieldDef  *fields;
             size_t     field_count;
         } object_decl;
+
+        // import Module.field
+        struct {
+            char *module;
+            char *field;
+        } import_stmt;
 
         // return expr
         struct {

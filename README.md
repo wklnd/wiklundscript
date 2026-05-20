@@ -1,263 +1,97 @@
-# wscript 
+# wscript
 
-**Version:** 0.1.0
+A simple scripting language with native module support.
 
-## Quick Start
-
-### Running a Script
+## Usage
 
 ```bash
-./wscript hello.ws
+./wscript script.ws       # Run a script
+./wscript                 # Start interactive REPL
 ```
 
-### Interactive REPL
-
-```bash
-./wscript    # Start the REPL
-> print("Hello!")
-> exit        # Quit
-```
-
-
-## Language Basics
-
-### Comments
-
-Use `#` to add comments:
-
-```
-# This is a comment
-print("Hello")  # Comments can go at the end of a line
-```
+## Syntax
 
 ### Variables
 
-Declare variables with `var` (mutable) or `const` (immutable):
-
-```
-var x = 10
-const message = "Hello"
-
-var name = "Alice"
-name = "Bob"  # This works - var can be reassigned
-
-const value = 42
-value = 100   # ERROR - const cannot be changed
+```ws
+var x = 10          # Mutable
+const pi = 3.14     # Immutable
 ```
 
-### Data Types
+### Types
 
-- **String** - Text enclosed in quotes: `"hello"`
-- **Int** - Whole numbers: `42`, `0`, `-5`
-- **Float** - Decimal numbers: `3.14`, `2.5`
-- **Bool** - `true` or `false`
+String, Int, Float, Bool
 
-### Print
+### Operators
 
-Output text to the console:
+Arithmetic: `+`, `-`, `*`, `/`  
+Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`  
+String concatenation: `+`
 
-```
-print("Hello, World!")
-print(42)
-print(3.14)
-print(true)
-```
+### Control Flow
 
----
-
-## Operators
-
-### Arithmetic
-
-```
-var a = 10 + 5    # 15
-var b = 10 - 3    # 7
-var c = 4 * 5     # 20
-var d = 20 / 4    # 5.0
-```
-
-### Comparison
-
-Returns `true` or `false`:
-
-```
-var result = 5 == 5      # true
-var result = 5 != 3      # true
-var result = 10 > 5      # true
-var result = 3 < 10      # true
-var result = 5 >= 5      # true
-var result = 3 <= 10     # true
-```
-
-### String Concatenation
-
-Use `+` to combine strings:
-
-```
-var greeting = "Hello" + " " + "World"
-print(greeting)  # Output: Hello World
-```
-
----
-
-## Control Flow
-
-### If / Else
-
-Make decisions in your code:
-
-```
-var age = 18
-
-if age >= 18
-  print("You are an adult")
+```ws
+if condition
+  # ...
 else
-  print("You are a minor")
+  # ...
 end
-```
 
-Nested conditions:
-
-```
-var score = 85
-
-if score >= 90
-  print("Grade: A")
-else
-  if score >= 80
-    print("Grade: B")
-  else
-    print("Grade: C")
-  end
-end
-```
-
----
-
-## Loops
-
-### Repeat N Times
-
-Execute code a specific number of times with a counter:
-
-```
 repeat 5 times as i
-  print("tests" + i)
+  # ...
 end
 
-# Output:
-# tests0
-# tests1
-# tests2
-# tests3
-# tests4
-```
-
-Use the iterator in expressions:
-
-```
-repeat 5 as n
-  var result = n * 2
-  print(result)
+repeat while condition
+  # ...
 end
-
-# Output:
-# 0
-# 2
-# 4
-# 6
-# 8
 ```
 
-### Repeat While
+### Functions
 
-Loop while a condition is true:
-
-```
-var count = 0
-
-repeat while count < 3
-  print(count)
-  count = count + 1
-end
-
-# Output:
-# 0
-# 1
-# 2
-```
-
----
-
-## Functions
-
-Define reusable blocks of code:
-
-```
-func greet name
-  print("Hello, " + name)
-end
-
-greet("Alice")
-greet("Bob")
-```
-
-Functions with multiple parameters:
-
-```
+```ws
 func add x y
-  var sum = x + y
-  print(sum)
+  return x + y
 end
 
-add(5, 3)  # Output: 8
+var result = add(3, 5)
 ```
 
-Return values from functions:
+### Objects
 
-```
-func multiply x y
-  var result = x * y
-  return result
-end
-
-var answer = multiply(6, 7)
-print(answer)  # Output: 42
-```
-
----
-
-## Objects
-
-Create structured data with blueprints:
-
-```
-object Person
-  name String
-  age Int
-end
-
-var alice = Person
-alice.name = "Alice"
-alice.age = 30
-
-print(alice.name)  # Output: Alice
-print(alice.age)   # Output: 30
-```
-
-Access object fields:
-
-```
+```ws
 object Point
-  x Int
-  y Int
+  x = Int
+  y = Int
 end
 
 var p = Point
 p.x = 10
 p.y = 20
+```
 
-print(p.x)  # Output: 10
+### Native Modules
+
+Import C libraries:
+
+```ws
+import IO.readline
+import String.reverse
+import Random.getRandomInt
+
+var name = readline("Name: ")
+var reversed = reverse(name)
+var number = getRandomInt(1, 100)
+```
+
+See [native/README.md](native/README.md) for writing modules.
+
+### I/O
+
+```ws
+import IO.readline
+
+print("Hello, World!")
+var input = readline("Prompt: ")
 ```
 @@```
 object Person {
@@ -424,5 +258,8 @@ x = 10         # ERROR!
 ```
 
 ---
+
+## Extension. 
+there is a small extension to get syntax highlighting, don't expect to much.
 
 why? why not
