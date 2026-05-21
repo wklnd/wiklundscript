@@ -163,10 +163,12 @@ struct Stmt {
             size_t     field_count;
         } object_decl;
 
-        // import Module.field
+        // import Module.field or Module.{a,b} or Module.*
         struct {
             char *module;
-            char *field;
+            char **fields;     // NULL for wildcard
+            size_t field_count;
+            int is_wildcard;   // 1 if Module.*
         } import_stmt;
 
         // return expr

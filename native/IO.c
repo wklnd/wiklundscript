@@ -14,7 +14,9 @@ const char *IO_readline(size_t argc, const char **argv) {
     
     char buf[1024];
     if (fgets(buf, sizeof(buf), stdin) == NULL) {
-        return "";
+        char *empty = malloc(1);
+        empty[0] = '\0';
+        return empty;
     }
     
     // Remove trailing newline

@@ -115,6 +115,7 @@ typedef struct {
 typedef struct Interp Interp;
 
 static Value eval_expr(Interp *interp, Expr *expr);
+static FuncEntry *resolve_native_from_modules(Interp *interp, const char *name);
 
 static void funcstore_init(FuncStore *fs) {
     fs->entries  = malloc(8 * sizeof(FuncEntry));
@@ -229,24 +230,28 @@ typedef struct {
     size_t     capacity;
 } BlueprintStore;
 
-// Dynamic library handles
+// Dynamic library handles with module names
 typedef struct {
-    void **handles;
+    char **names;
+    void  **handles;
     size_t count;
     size_t capacity;
 } HandleStore;
 
 static void handlestore_init(HandleStore *hs) {
-    hs->handles = malloc(4 * sizeof(void *));
+    hs->names = malloc(4 * sizeof(char*));
+    hs->handles = malloc(4 * sizeof(void*));
     hs->count = 0;
     hs->capacity = 4;
 }
 
-static void handlestore_push(HandleStore *hs, void *h) {
+static void handlestore_push(HandleStore *hs, const char *name, void *h) {
     if (hs->count >= hs->capacity) {
         hs->capacity *= 2;
-        hs->handles = realloc(hs->handles, hs->capacity * sizeof(void *));
+        hs->names = realloc(hs->names, hs->capacity * sizeof(char*));
+        hs->handles = realloc(hs->handles, hs->capacity * sizeof(void*));
     }
+    hs->names[hs->count] = strdup(name);
     hs->handles[hs->count++] = h;
 }
 
@@ -288,6 +293,22 @@ struct Interp {
     int            returning;
     Value          return_value;
 };
+
+static FuncEntry *resolve_native_from_modules(Interp *interp, const char *name) {
+    for (size_t mi = 0; mi < interp->handles.count; mi++) {
+        const char *module = interp->handles.names[mi];
+        void *handle = interp->handles.handles[mi];
+        char sym[256];
+        snprintf(sym, sizeof(sym), "%s_%s", module, name);
+        void *raw = dlsym(handle, sym);
+        if (raw) {
+            const char *(*fn)(size_t, const char **) = (const char *(*)(size_t, const char **))raw;
+            funcstore_set_native(&interp->funcs, name, fn);
+            return funcstore_get(&interp->funcs, name);
+        }
+    }
+    return NULL;
+}
 
 //  Value Helpers 
 
@@ -506,6 +527,9 @@ static Value eval_expr(Interp *interp, Expr *expr) {
 
         case EXPR_CALL: {
             FuncEntry *func = funcstore_get(&interp->funcs, expr->call.name);
+            if (!func) {
+                func = resolve_native_from_modules(interp, expr->call.name);
+            }
             if (!func) ERROR_F(0, "undefined function '%s'", expr->call.name);
 
             if (func->is_native) {
@@ -675,7 +699,6 @@ static void exec_stmt(Interp *interp, Stmt *stmt) {
 
         case STMT_IMPORT: {
             const char *module = stmt->import_stmt.module;
-            const char *field  = stmt->import_stmt.field;
 
             char libname[256];
             snprintf(libname, sizeof(libname), "lib%s.so", module);
@@ -698,21 +721,46 @@ static void exec_stmt(Interp *interp, Stmt *stmt) {
                 ERROR_F(stmt->line, "failed to open module '%s': %s", module, dlerror());
             }
 
-            char sym[256];
-            snprintf(sym, sizeof(sym), "%s_%s", module, field);
-            const char *(*fn)() = dlsym(handle, sym);
-            if (!fn) {
-                dlclose(handle);
-                ERROR_F(stmt->line, "symbol '%s' not found in module '%s'", sym, module);
+            // wildcard imports: just record the module handle for lazy resolution
+            if (stmt->import_stmt.is_wildcard) {
+                handlestore_push(&interp->handles, module, handle);
+                break;
             }
 
-            funcstore_set_native(&interp->funcs, field, fn);
-            handlestore_push(&interp->handles, handle);
+            void **resolved = NULL;
+            if (stmt->import_stmt.field_count > 0) {
+                resolved = malloc(stmt->import_stmt.field_count * sizeof(void *));
+            }
+
+            // resolve specific fields first so import is atomic
+            for (size_t i = 0; i < stmt->import_stmt.field_count; i++) {
+                const char *field = stmt->import_stmt.fields[i];
+                char sym[256];
+                snprintf(sym, sizeof(sym), "%s_%s", module, field);
+                void *raw = dlsym(handle, sym);
+                if (!raw) {
+                    free(resolved);
+                    dlclose(handle);
+                    ERROR_F(stmt->line, "symbol '%s' not found in module '%s'", sym, module);
+                }
+                resolved[i] = raw;
+            }
+
+            for (size_t i = 0; i < stmt->import_stmt.field_count; i++) {
+                const char *field = stmt->import_stmt.fields[i];
+                const char *(*fn)(size_t, const char **) = (const char *(*)(size_t, const char **))resolved[i];
+                funcstore_set_native(&interp->funcs, field, fn);
+            }
+            free(resolved);
+            handlestore_push(&interp->handles, module, handle);
             break;
         }
 
         case STMT_FUNC_CALL: {
             FuncEntry *func = funcstore_get(&interp->funcs, stmt->func_call.name);
+            if (!func) {
+                func = resolve_native_from_modules(interp, stmt->func_call.name);
+            }
             if (!func) ERROR_F(stmt->line, "undefined function '%s'", stmt->func_call.name);
 
             if (func->is_native) {
@@ -796,6 +844,8 @@ void interpreter_run(Program *program) {
     free(interp.blueprints.entries);
     for (size_t i = 0; i < interp.handles.count; i++) {
         dlclose(interp.handles.handles[i]);
+        free(interp.handles.names[i]);
     }
     free(interp.handles.handles);
+    free(interp.handles.names);
 }

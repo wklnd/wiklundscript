@@ -46,3 +46,28 @@ const char *Random_getRandomInt(size_t argc, const char **argv) {
     strcpy(copy, buf);
     return copy;
 }
+
+
+const char *Random_getRandomFloat(size_t argc, const char **argv) {
+    seed_rng();
+
+    double min = 0.0;
+    double max = 1.0;
+
+    if (argc >= 1) min = atof(argv[0]);
+    if (argc >= 2) max = atof(argv[1]);
+
+    if (max < min) {
+        double tmp = min;
+        min = max;
+        max = tmp;
+    }
+
+    double value = min + ((double)rand() / (double)RAND_MAX) * (max - min);
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%g", value);
+    char *copy = malloc(strlen(buf) + 1);
+    strcpy(copy, buf);
+    return copy;
+}

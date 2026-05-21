@@ -454,11 +454,38 @@ static Stmt *parse_import(Parser *p) {
     advance(p); // consume 'import'
     Token *module = expect(p, TOKEN_IDENTIFIER, "expected module name");
     expect(p, TOKEN_DOT, "expected '.'");
-    Token *field = expect(p, TOKEN_IDENTIFIER, "expected field name");
 
     Stmt *s = make_stmt(STMT_IMPORT, line);
     s->import_stmt.module = strdup(module->value);
-    s->import_stmt.field  = strdup(field->value);
+    s->import_stmt.fields = NULL;
+    s->import_stmt.field_count = 0;
+    s->import_stmt.is_wildcard = 0;
+
+    // wildcard: Module.*
+    if (check(p, TOKEN_STAR)) {
+        advance(p);
+        s->import_stmt.is_wildcard = 1;
+        return s;
+    }
+
+    // first field
+    Token *field = expect(p, TOKEN_IDENTIFIER, "expected field name");
+    // dynamic array for fields
+    size_t cap = 4;
+    s->import_stmt.fields = malloc(cap * sizeof(char *));
+    s->import_stmt.fields[s->import_stmt.field_count++] = strdup(field->value);
+
+    // additional comma-separated fields
+    while (check(p, TOKEN_COMMA)) {
+        advance(p);
+        Token *f = expect(p, TOKEN_IDENTIFIER, "expected field name");
+        if (s->import_stmt.field_count >= cap) {
+            cap *= 2;
+            s->import_stmt.fields = realloc(s->import_stmt.fields, cap * sizeof(char *));
+        }
+        s->import_stmt.fields[s->import_stmt.field_count++] = strdup(f->value);
+    }
+
     return s;
 }
 

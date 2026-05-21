@@ -79,3 +79,16 @@ print(value)
 2. Export a function named `ModuleName_functionName`.
 3. Add a `libModuleName.so` build rule to `native/Makefile` and, if needed, the root `Makefile`.
 4. Import it from WScript with `import ModuleName.functionName`.
+
+
+
+# String Library
+
+
+getStringLength(string)
+returns the length of the string
+
+example: 
+const string = "Hello"
+print("String length: " + getStringLength(string))
+

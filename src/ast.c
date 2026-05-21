@@ -126,7 +126,12 @@ void stmt_free(Stmt *stmt) {
 
         case STMT_IMPORT:
             free(stmt->import_stmt.module);
-            free(stmt->import_stmt.field);
+            if (stmt->import_stmt.fields) {
+                for (size_t i = 0; i < stmt->import_stmt.field_count; i++) {
+                    free(stmt->import_stmt.fields[i]);
+                }
+                free(stmt->import_stmt.fields);
+            }
             break;
 
         case STMT_RETURN:
