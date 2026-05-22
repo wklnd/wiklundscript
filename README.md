@@ -16,17 +16,14 @@ const pi = 3.14     # Immutable
 ```
 
 ### Types
-
-String, Int, Float, Bool
+`String`, `Int`, `Float`, `Bool`
 
 ### Operators
-
-Arithmetic: `+`, `-`, `*`, `/`  
-Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`  
+Arithmetic: `+`, `-`, `*`, `/`
+Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
 String concatenation: `+`
 
 ### Control Flow
-
 ```ws
 if condition
   # ...
@@ -44,7 +41,6 @@ end
 ```
 
 ### Functions
-
 ```ws
 func add x y
   return x + y
@@ -54,9 +50,7 @@ var result = add(3, 5)
 ```
 
 ### Objects
-
 ```ws
-<<<<<<< HEAD
 object Point {
   x = Int
   y = Int
@@ -68,7 +62,6 @@ p.y = 20
 ```
 
 ### Native Modules
-
 Import C libraries:
 ```ws
 import IO.readline
@@ -87,19 +80,19 @@ sleep(1.1)
 print("the pause is over")
 ```
 
-More info on these modules / libraries will come in the feature. 
-
+More info on these modules will come in the future.
 See [native/README.md](native/README.md) for writing modules.
 
 ### I/O
-
 ```ws
 import IO.readline
 
 print("Hello, World!")
 var input = readline("Prompt: ")
 ```
-@@```
+
+### Working with Objects
+```ws
 object Person {
   name = String
   age = Int
@@ -108,14 +101,12 @@ object Person {
 var alice = Person
 alice.name = "Alice"
 alice.age = 30
-
 print(alice.name)  # Output: Alice
 print(alice.age)   # Output: 30
 ```
 
 Access object fields:
-
-```
+```ws
 object Point {
   x = Int
   y = Int
@@ -124,7 +115,6 @@ object Point {
 var p = Point
 p.x = 10
 p.y = 20
-
 print(p.x)  # Output: 10
 ```
 
@@ -133,16 +123,14 @@ print(p.x)  # Output: 10
 ## Examples
 
 ### Example 1: Counting to 10
-
-```
-repeat 10 as i
+```ws
+repeat 10 times as i
   print(i + 1)
 end
 ```
 
 ### Example 2: Temperature Converter
-
-```
+```ws
 func celsius_to_fahrenheit c
   var f = (c * 9) / 5 + 32
   return f
@@ -153,12 +141,10 @@ var temp_f = celsius_to_fahrenheit(temp_c)
 print(temp_c + "°C = " + temp_f + "°F")
 ```
 
-### Example 3: Guessing Game (Print only)
-
-```
+### Example 3: Guessing Game
+```ws
 var secret = 42
-var guessText = readline("Guess the secret number: ")
-var guess = parseInt(guessText)
+var guess = 40
 
 if guess == secret
   print("You got it!")
@@ -172,8 +158,7 @@ end
 ```
 
 ### Example 4: Multiplication Table
-
-```
+```ws
 func print_table num
   var i = 1
   repeat while i <= 10
@@ -187,8 +172,7 @@ print_table(5)
 ```
 
 ### Example 5: Working with Objects
-
-```
+```ws
 object Book {
   title = String
   author = String
@@ -210,12 +194,12 @@ print(mybook.pages + " pages")
 ## Tips & Tricks
 
 **String Concatenation**: Mix types freely with `+`
-```
+```ws
 print("The answer is " + 42)  # Output: The answer is 42
 ```
 
 **Nested Conditions**: Use multiple `if/else` blocks
-```
+```ws
 if condition1
   if condition2
     print("Both are true")
@@ -224,14 +208,14 @@ end
 ```
 
 **Loop Tricks**: Use the iterator variable in calculations
-```
-repeat 10 as i
+```ws
+repeat 10 times as i
   print(i * i)  # Print squares: 0, 1, 4, 9, 16, ...
 end
 ```
 
 **Reusable Code**: Write functions to avoid repetition
-```
+```ws
 func say msg
   print(">>> " + msg)
 end
@@ -244,28 +228,28 @@ say("World")
 
 ## Common Gotchas
 
-❌ **Missing `end`** - All blocks need `end`
-```
+**Missing `end`** - All blocks need `end`
+```ws
 if true        # Missing end!
   print("hi")
 ```
 
-❌ **Off-by-one in loops** - `repeat N` starts at 0
-```
-repeat 3 as i  # i = 0, 1, 2 (not 1, 2, 3)
+**Off-by-one in loops** - `repeat N times` starts at 0
+```ws
+repeat 3 times as i  # i = 0, 1, 2 (not 1, 2, 3)
   print(i)
 end
 ```
 
-❌ **Const can't be reassigned**
-```
+**Const can't be reassigned**
+```ws
 const x = 5
 x = 10         # ERROR!
 ```
 
 ---
 
-## Extension. 
-there is a small extension to get syntax highlighting, don't expect to much.
+## Extension
+There is a small extension to get syntax highlighting, don't expect too much.
 
-why? why not
+Why? Why not.

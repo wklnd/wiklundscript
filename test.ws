@@ -1,3 +1,0 @@
-repeat 10 times as i
-  print(i * i)  # Print squares: 0, 1, 4, 9, 16, ...
-end
