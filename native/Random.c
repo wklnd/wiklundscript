@@ -1,4 +1,6 @@
 // Random native module
+#include "native.h"
+
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
@@ -19,7 +21,7 @@ static int parse_int_arg(const char *text, int fallback) {
 
 // Symbol name expected by interpreter: Random_getRandomInt
 // Usage from wscript: Random.getRandomInt(min, max)
-const char *Random_getRandomInt(size_t argc, const char **argv) {
+NativeValue Random_getRandomInt(size_t argc, const char **argv) {
     seed_rng();
 
     int min = 0;
@@ -40,15 +42,11 @@ const char *Random_getRandomInt(size_t argc, const char **argv) {
         value = min + (rand() % span);
     }
 
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d", value);
-    char *copy = malloc(strlen(buf) + 1);
-    strcpy(copy, buf);
-    return copy;
+    return NATIVE_INT_VALUE(value);
 }
 
 
-const char *Random_getRandomFloat(size_t argc, const char **argv) {
+NativeValue Random_getRandomFloat(size_t argc, const char **argv) {
     seed_rng();
 
     double min = 0.0;
@@ -64,10 +62,5 @@ const char *Random_getRandomFloat(size_t argc, const char **argv) {
     }
 
     double value = min + ((double)rand() / (double)RAND_MAX) * (max - min);
-
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%g", value);
-    char *copy = malloc(strlen(buf) + 1);
-    strcpy(copy, buf);
-    return copy;
+    return NATIVE_FLOAT_VALUE(value);
 }

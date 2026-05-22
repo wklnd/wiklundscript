@@ -56,6 +56,7 @@ var result = add(3, 5)
 ### Objects
 
 ```ws
+<<<<<<< HEAD
 object Point {
   x = Int
   y = Int

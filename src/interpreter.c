@@ -7,6 +7,8 @@
 #include <math.h>
 #include <dlfcn.h>
 
+#include "../native/native.h"
+
 #define LOOP_LIMIT 100000
 
 //  Runtime Values 
@@ -24,6 +26,7 @@ typedef struct Value Value;  // Forward declaration
 static Value make_string(const char *s);
 static Value make_int(long n);
 static Value make_float(double f);
+static Value make_bool(int b);
 static char *value_to_string(Value v);
 
 typedef struct {
@@ -103,7 +106,7 @@ typedef struct {
     Stmt   **body;
     size_t   body_count;
     int      is_native;
-    const char *(*native)(size_t argc, const char **argv);
+    NativeValue (*native)(size_t argc, const char **argv);
 } FuncEntry;
 
 typedef struct {
@@ -124,7 +127,7 @@ static void funcstore_init(FuncStore *fs) {
 }
 
 static void funcstore_set_native(FuncStore *fs, const char *name,
-                                 const char *(*native)(size_t argc, const char **argv)) {
+                                 NativeValue (*native)(size_t argc, const char **argv)) {
     if (fs->count >= fs->capacity) {
         fs->capacity *= 2;
         fs->entries = realloc(fs->entries, fs->capacity * sizeof(FuncEntry));
@@ -140,26 +143,22 @@ static void funcstore_set_native(FuncStore *fs, const char *name,
     };
 }
 
-static Value value_from_native_result(const char *res) {
-    if (!res) return make_string("");
-
-    int is_float = 0;
-    int is_num = 1;
-    for (const char *p = res; *p; p++) {
-        if (*p == '.') { is_float = 1; continue; }
-        if (p == res && (*p == '+' || *p == '-')) continue;
-        if (*p < '0' || *p > '9') { is_num = 0; break; }
+static Value value_from_native_result(NativeValue res) {
+    switch (res.type) {
+        case NATIVE_INT:
+            return make_int(res.as.integer);
+        case NATIVE_FLOAT:
+            return make_float(res.as.floating);
+        case NATIVE_BOOL:
+            return make_bool(res.as.boolean);
+        case NATIVE_STRING: {
+            Value value = make_string(res.as.string ? res.as.string : "");
+            free(res.as.string);
+            return value;
+        }
     }
 
-    if (is_num) {
-        Value value = is_float ? make_float(atof(res)) : make_int((long)atol(res));
-        free((void *)res);
-        return value;
-    }
-
-    Value value = make_string(res);
-    free((void *)res);
-    return value;
+    return make_string("");
 }
 
 static Value call_native(FuncEntry *func, Interp *interp, Expr **args, size_t arg_count) {
@@ -180,7 +179,7 @@ static Value call_native(FuncEntry *func, Interp *interp, Expr **args, size_t ar
         }
     }
 
-    const char *res = func->native(arg_count, argv);
+    NativeValue res = func->native(arg_count, argv);
 
     for (size_t i = 0; i < arg_count; i++) {
         free(arg_strings[i]);
@@ -302,7 +301,7 @@ static FuncEntry *resolve_native_from_modules(Interp *interp, const char *name) 
         snprintf(sym, sizeof(sym), "%s_%s", module, name);
         void *raw = dlsym(handle, sym);
         if (raw) {
-            const char *(*fn)(size_t, const char **) = (const char *(*)(size_t, const char **))raw;
+            NativeValue (*fn)(size_t, const char **) = (NativeValue (*)(size_t, const char **))raw;
             funcstore_set_native(&interp->funcs, name, fn);
             return funcstore_get(&interp->funcs, name);
         }
@@ -748,7 +747,7 @@ static void exec_stmt(Interp *interp, Stmt *stmt) {
 
             for (size_t i = 0; i < stmt->import_stmt.field_count; i++) {
                 const char *field = stmt->import_stmt.fields[i];
-                const char *(*fn)(size_t, const char **) = (const char *(*)(size_t, const char **))resolved[i];
+                NativeValue (*fn)(size_t, const char **) = (NativeValue (*)(size_t, const char **))resolved[i];
                 funcstore_set_native(&interp->funcs, field, fn);
             }
             free(resolved);

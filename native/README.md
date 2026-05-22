@@ -1,94 +1,381 @@
 # Native Modules
 
-This folder contains C shared libraries that wscript can load with `import`.
+This directory contains the native libraries that wscript can load with `import`.
 
-## How imports work
+## ABI
 
-Use this syntax in a `.ws` file:
+All native functions use this signature:
+
+```c
+NativeValue Module_function(size_t argc, const char **argv)
+```
+
+Use `native/native.h` for the shared `NativeType` enum and `NativeValue` tagged union.
+
+## Import Pattern
+
+Use native functions like this from a `.ws` file:
+
+```ws
+import Time.getDate
+import IO.readline
+import String.reverse
+import Random.getRandomInt
+import Math.floor
+```
+
+The interpreter loads `native/libName.so` and resolves symbols named `Name_function`.
+
+`DateTime` remains as a compatibility module, but `Time` is the preferred home for date and sleep helpers.
+
+## Time
+
+Date and sleep helpers.
+
+### `getDate()`
+
+Returns today in `YYYY-MM-DD` format.
+
+```ws
+import Time.getDate
+
+print(getDate())
+```
+
+### `getTomorrow()`
+
+Returns tomorrow in `YYYY-MM-DD` format.
+
+```ws
+import Time.getTomorrow
+
+print(getTomorrow())
+```
+
+### `sleep(seconds)`
+
+Pauses execution for the given number of seconds.
+
+```ws
+import Time.sleep
+
+print("waiting...")
+sleep(0.5)
+print("done")
+```
+
+Notes:
+
+- Fractional seconds are supported.
+- A non-positive value returns immediately.
+
+## DateTime
+
+Compatibility aliases for older scripts.
+
+### `getCurrentDate()`
+
+Alias for `getDate()`.
 
 ```ws
 import DateTime.getCurrentDate
-import Random.getRandomInt
+
+print(getCurrentDate())
 ```
 
-The interpreter looks for a shared library named:
+### `getTomorrow()`
 
-- `native/libDateTime.so`
-- `native/libRandom.so`
+Alias for `Time.getTomorrow()`.
 
-Then it looks for a symbol named:
+```ws
+import DateTime.getTomorrow
 
-- `DateTime_getCurrentDate`
-- `Random_getRandomInt`
-
-## Native function ABI
-
-Native functions use this signature:
-
-```c
-const char *Module_function(size_t argc, const char **argv)
+print(getTomorrow())
 ```
 
-Rules:
+## IO
 
-- `argc` is the number of script arguments.
-- `argv` contains the arguments as strings.
-- Return a heap-allocated C string.
-- The interpreter converts the returned string to `Int`, `Float`, or `String`.
+Terminal input helpers.
 
-Example return values:
+### `readline(prompt)`
 
-- `"42"` becomes an `Int`
-- `"3.14"` becomes a `Float`
-- Anything else becomes a `String`
+Prints a prompt, then reads one line from standard input.
 
-## Building
+```ws
+import IO.readline
 
-Build the native libraries from this folder:
-
-```bash
-make -C native
+var name = readline("Name: ")
+print("Hello, " + name)
 ```
 
-Or from the repo root:
+Notes:
 
-```bash
-make
+- The trailing newline is removed.
+- If input ends, the function returns an empty string.
+
+### `parseInt(text)`
+
+Converts text to an `Int`.
+
+```ws
+import IO.parseInt
+
+var value = parseInt("42")
+print(value)
 ```
 
-## Example
+Notes:
 
-`native/Random.c` exposes:
+- Parse before the first assignment if you want the variable to be an `Int`.
+- Variables keep the type they were first assigned.
 
-```c
-const char *Random_getRandomInt(size_t argc, const char **argv)
+## Math
+
+Numeric helpers for calculations.
+
+### `floor(value)`
+
+Rounds down to the nearest whole number.
+
+```ws
+print(floor(3.9))
+print(floor(-3.1))
 ```
 
-And this WScript code calls it:
+### `sqrt(value)`
+
+Returns the square root.
+
+```ws
+print(sqrt(16))
+```
+
+### `abs(value)`
+
+Returns the absolute value.
+
+```ws
+print(abs(-12))
+print(abs(-2.5))
+```
+
+### `round(value)`
+
+Rounds to the nearest whole number.
+
+```ws
+print(round(3.2))
+print(round(3.8))
+```
+
+### `pow(base, exponent)`
+
+Raises a number to a power.
+
+```ws
+print(pow(2, 3))
+```
+
+### `min(values...)`
+
+Returns the smallest value from the arguments.
+
+```ws
+print(min(5, 2, 9, 1))
+```
+
+### `max(values...)`
+
+Returns the largest value from the arguments.
+
+```ws
+print(max(5, 2, 9, 1))
+```
+
+### `random()`
+
+Returns a random float in the range $0 \le x < 1$.
+
+```ws
+print(random())
+```
+
+Notes:
+
+- `floor` and `round` return `Int` values.
+- `sqrt` and `pow` return `Float` values.
+- `min` and `max` preserve whole-number results when all inputs are whole numbers.
+
+## Random
+
+Pseudo-random number helpers.
+
+### `getRandomInt(min, max)`
+
+Returns a random integer between `min` and `max`, inclusive.
 
 ```ws
 import Random.getRandomInt
 
-var value = getRandomInt(1, 100)
-print(value)
+print(getRandomInt(1, 100))
 ```
 
-## Creating a new module
+If `min` and `max` are swapped, the function normalizes them.
+
+### `getRandomFloat(min, max)`
+
+Returns a random float between `min` and `max`.
+
+```ws
+import Random.getRandomFloat
+
+print(getRandomFloat(0, 1))
+```
+
+Notes:
+
+- The random generator is seeded once per process.
+
+## String
+
+Basic string operations.
+
+### `getStringLength(text)`
+
+Returns the number of characters in a string.
+
+```ws
+import String.getStringLength
+
+var length = getStringLength("Hello")
+print(length)
+print(length + 2)
+```
+
+### `doStringConcat(values...)`
+
+Concatenates all arguments into one string.
+
+```ws
+import String.doStringConcat
+
+print(doStringConcat("Hello", " ", "world"))
+```
+
+### `doStringReverse(text)`
+
+Returns the text in reverse order.
+
+```ws
+import String.doStringReverse
+
+print(doStringReverse("wscript"))
+```
+
+### `doStringCapitalize(text)`
+
+Uppercases the first character and lowercases the rest.
+
+```ws
+import String.doStringCapitalize
+
+print(doStringCapitalize("hello WORLD"))
+```
+
+### `doStringUppercase(text)`
+
+Converts text to uppercase.
+
+```ws
+import String.doStringUppercase
+
+print(doStringUppercase("hello"))
+```
+
+### `doStringLowercase(text)`
+
+Converts text to lowercase.
+
+```ws
+import String.doStringLowercase
+
+print(doStringLowercase("Hello"))
+```
+
+### `doStringEquals(left, right)`
+
+Returns `true` if both strings are exactly equal.
+
+```ws
+import String.doStringEquals
+
+print(doStringEquals("abc", "abc"))
+```
+
+## Adding A New Module
 
 1. Add a new `.c` file in `native/`.
-2. Export a function named `ModuleName_functionName`.
-3. Add a `libModuleName.so` build rule to `native/Makefile` and, if needed, the root `Makefile`.
-4. Import it from WScript with `import ModuleName.functionName`.
+2. Include `native.h`.
+3. Export functions as `ModuleName_functionName`.
+4. Add a shared-library rule to `native/Makefile` and the root `Makefile`.
 
+print(doStringConcat("Hello", " ", "world"))
+```
 
+### `doStringReverse(text)`
 
-# String Library
+Returns the text in reverse order.
 
+```ws
+import String.doStringReverse
 
-getStringLength(string)
-returns the length of the string
+print(doStringReverse("wscript"))
+```
 
-example: 
-const string = "Hello"
-print("String length: " + getStringLength(string))
+### `doStringCapitalize(text)`
+
+Uppercases the first character and lowercases the rest.
+
+```ws
+import String.doStringCapitalize
+
+print(doStringCapitalize("hello WORLD"))
+```
+
+### `doStringUppercase(text)`
+
+Converts text to uppercase.
+
+```ws
+import String.doStringUppercase
+
+print(doStringUppercase("hello"))
+```
+
+### `doStringLowercase(text)`
+
+Converts text to lowercase.
+
+```ws
+import String.doStringLowercase
+
+print(doStringLowercase("Hello"))
+```
+
+### `doStringEquals(left, right)`
+
+Returns `true` if both strings are exactly equal.
+
+```ws
+import String.doStringEquals
+
+print(doStringEquals("abc", "abc"))
+```
+
+## Adding A New Module
+
+1. Add a new `.c` file in `native/`.
+2. Include `native.h`.
+3. Export functions as `ModuleName_functionName`.
+4. Add a shared-library rule to `native/Makefile` and the root `Makefile`.
 

@@ -214,12 +214,30 @@ static Expr *parse_primary(Parser *p) {
     return NULL;
 }
 
+static Expr *parse_unary(Parser *p) {
+    if (check(p, TOKEN_MINUS)) {
+        Token *op = advance(p);
+        Expr *right = parse_unary(p);
+        Expr *zero = make_expr(EXPR_LITERAL);
+        zero->literal.value = strdup("0");
+        zero->literal.type = TYPE_INT;
+
+        Expr *e = make_expr(EXPR_BINARY);
+        e->binary.left = zero;
+        e->binary.op = strdup(op->value);
+        e->binary.right = right;
+        return e;
+    }
+
+    return parse_primary(p);
+}
+
 static Expr *parse_muldiv(Parser *p) {
-    Expr *left = parse_primary(p);
+    Expr *left = parse_unary(p);
 
     while (check(p, TOKEN_STAR) || check(p, TOKEN_SLASH)) {
         Token *op    = advance(p);
-        Expr  *right = parse_primary(p);
+        Expr  *right = parse_unary(p);
         Expr  *e     = make_expr(EXPR_BINARY);
         e->binary.left  = left;
         e->binary.op    = strdup(op->value);
