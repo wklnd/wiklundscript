@@ -2,6 +2,8 @@
 
 This directory contains the native libraries that wscript can load with `import`.
 
+## Important: This is not complete, and probably will always be behind. 
+
 ## ABI
 
 All native functions use this signature:
@@ -319,63 +321,4 @@ print(doStringEquals("abc", "abc"))
 3. Export functions as `ModuleName_functionName`.
 4. Add a shared-library rule to `native/Makefile` and the root `Makefile`.
 
-print(doStringConcat("Hello", " ", "world"))
-```
-
-### `doStringReverse(text)`
-
-Returns the text in reverse order.
-
-```ws
-import String.doStringReverse
-
-print(doStringReverse("wscript"))
-```
-
-### `doStringCapitalize(text)`
-
-Uppercases the first character and lowercases the rest.
-
-```ws
-import String.doStringCapitalize
-
-print(doStringCapitalize("hello WORLD"))
-```
-
-### `doStringUppercase(text)`
-
-Converts text to uppercase.
-
-```ws
-import String.doStringUppercase
-
-print(doStringUppercase("hello"))
-```
-
-### `doStringLowercase(text)`
-
-Converts text to lowercase.
-
-```ws
-import String.doStringLowercase
-
-print(doStringLowercase("Hello"))
-```
-
-### `doStringEquals(left, right)`
-
-Returns `true` if both strings are exactly equal.
-
-```ws
-import String.doStringEquals
-
-print(doStringEquals("abc", "abc"))
-```
-
-## Adding A New Module
-
-1. Add a new `.c` file in `native/`.
-2. Include `native.h`.
-3. Export functions as `ModuleName_functionName`.
-4. Add a shared-library rule to `native/Makefile` and the root `Makefile`.
 
