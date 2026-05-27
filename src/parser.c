@@ -135,6 +135,40 @@ static Expr *make_expr(ExprKind kind) {
 static Expr *parse_primary(Parser *p) {
     Token *t = peek(p);
 
+    // Array literal: [expr, expr, ...]
+    if (t->type == TOKEN_LBRACKET) {
+        advance(p);
+
+        Expr **items = NULL;
+        size_t count = 0;
+        size_t capacity = 4;
+
+        if (!check(p, TOKEN_RBRACKET)) {
+            items = malloc(capacity * sizeof(Expr *));
+            while (!check(p, TOKEN_RBRACKET) && !is_at_end(p)) {
+                if (count >= capacity) {
+                    capacity *= 2;
+                    items = realloc(items, capacity * sizeof(Expr *));
+                }
+
+                items[count++] = parse_expression(p);
+
+                if (check(p, TOKEN_COMMA)) {
+                    advance(p);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        expect(p, TOKEN_RBRACKET, "expected ']'");
+
+        Expr *e = make_expr(EXPR_ARRAY);
+        e->array.items = items;
+        e->array.count = count;
+        return e;
+    }
+
     // String literal
     if (t->type == TOKEN_STRING) {
         advance(p);
@@ -214,6 +248,23 @@ static Expr *parse_primary(Parser *p) {
     return NULL;
 }
 
+static Expr *parse_postfix(Parser *p) {
+    Expr *expr = parse_primary(p);
+
+    while (check(p, TOKEN_LBRACKET)) {
+        advance(p);
+        Expr *index = parse_expression(p);
+        expect(p, TOKEN_RBRACKET, "expected ']'");
+
+        Expr *e = make_expr(EXPR_INDEX);
+        e->index.array = expr;
+        e->index.index = index;
+        expr = e;
+    }
+
+    return expr;
+}
+
 static Expr *parse_unary(Parser *p) {
     if (check(p, TOKEN_MINUS)) {
         Token *op = advance(p);
@@ -229,7 +280,7 @@ static Expr *parse_unary(Parser *p) {
         return e;
     }
 
-    return parse_primary(p);
+    return parse_postfix(p);
 }
 
 static Expr *parse_muldiv(Parser *p) {

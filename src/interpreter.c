@@ -19,6 +19,7 @@ typedef enum {
     VAL_FLOAT,
     VAL_BOOL,
     VAL_OBJECT,
+    VAL_ARRAY,
 } ValKind;
 
 typedef struct Value Value;  // Forward declaration
@@ -27,6 +28,7 @@ static Value make_string(const char *s);
 static Value make_int(long n);
 static Value make_float(double f);
 static Value make_bool(int b);
+static Value make_array(Value *items, size_t count);
 static char *value_to_string(Value v);
 
 typedef struct {
@@ -36,6 +38,11 @@ typedef struct {
     size_t   field_count;
 } ObjectVal;
 
+typedef struct {
+    Value  *items;
+    size_t  count;
+} ArrayVal;
+
 typedef struct Value {
     ValKind kind;
     union {
@@ -44,6 +51,7 @@ typedef struct Value {
         double    floating;
         int       boolean;
         ObjectVal object;
+        ArrayVal  array;
     };
 } Value;
 
@@ -328,6 +336,7 @@ static const char *valkind_name(ValKind k) {
         case VAL_FLOAT:  return "Float";
         case VAL_BOOL:   return "Bool";
         case VAL_OBJECT: return "Object";
+        case VAL_ARRAY:  return "Array";
     }
     return "Unknown";
 }
@@ -348,6 +357,55 @@ static Value make_bool(int b) {
     return (Value){ .kind = VAL_BOOL, .boolean = b };
 }
 
+static Value make_array(Value *items, size_t count) {
+    return (Value){ .kind = VAL_ARRAY, .array = { .items = items, .count = count } };
+}
+
+static int values_equal(Value left, Value right);
+
+static char *array_to_string(ArrayVal array) {
+    size_t len = 2;
+    char **parts = NULL;
+
+    if (array.count > 0) {
+        parts = malloc(array.count * sizeof(char *));
+    }
+
+    for (size_t i = 0; i < array.count; i++) {
+        parts[i] = value_to_string(array.items[i]);
+        len += strlen(parts[i]);
+        if (i + 1 < array.count) {
+            len += 2;
+        }
+    }
+
+    char *result = malloc(len + 1);
+    if (!result) {
+        for (size_t i = 0; i < array.count; i++) {
+            free(parts[i]);
+        }
+        free(parts);
+        return strdup("[]");
+    }
+
+    char *cursor = result;
+    *cursor++ = '[';
+    for (size_t i = 0; i < array.count; i++) {
+        size_t part_len = strlen(parts[i]);
+        memcpy(cursor, parts[i], part_len);
+        cursor += part_len;
+        free(parts[i]);
+        if (i + 1 < array.count) {
+            *cursor++ = ',';
+            *cursor++ = ' ';
+        }
+    }
+    *cursor++ = ']';
+    *cursor = '\0';
+    free(parts);
+    return result;
+}
+
 static char *value_to_string(Value v) {
     char buf[64];
     switch (v.kind) {
@@ -356,6 +414,7 @@ static char *value_to_string(Value v) {
         case VAL_FLOAT:  snprintf(buf, sizeof(buf), "%g",  v.floating); return strdup(buf);
         case VAL_BOOL:   return strdup(v.boolean ? "true" : "false");
         case VAL_OBJECT: snprintf(buf, sizeof(buf), "[%s]", v.object.type_name); return strdup(buf);
+        case VAL_ARRAY:  return array_to_string(v.array);
     }
     return strdup("");
 }
@@ -366,8 +425,45 @@ static int value_is_truthy(Value v) {
         case VAL_INT:    return v.integer != 0;
         case VAL_FLOAT:  return v.floating != 0.0;
         case VAL_STRING: return strlen(v.string) > 0;
+        case VAL_ARRAY:  return v.array.count > 0;
         default:         return 0;
     }
+}
+
+static int values_equal(Value left, Value right) {
+    if (left.kind != right.kind) {
+        if ((left.kind == VAL_INT || left.kind == VAL_FLOAT) &&
+            (right.kind == VAL_INT || right.kind == VAL_FLOAT)) {
+            double lv = left.kind == VAL_FLOAT ? left.floating : left.integer;
+            double rv = right.kind == VAL_FLOAT ? right.floating : right.integer;
+            return lv == rv;
+        }
+        return 0;
+    }
+
+    switch (left.kind) {
+        case VAL_STRING: return strcmp(left.string, right.string) == 0;
+        case VAL_INT:    return left.integer == right.integer;
+        case VAL_FLOAT:  return left.floating == right.floating;
+        case VAL_BOOL:   return left.boolean == right.boolean;
+        case VAL_OBJECT:
+            if (strcmp(left.object.type_name, right.object.type_name) != 0 ||
+                left.object.field_count != right.object.field_count) {
+                return 0;
+            }
+            for (size_t i = 0; i < left.object.field_count; i++) {
+                if (strcmp(left.object.field_names[i], right.object.field_names[i]) != 0) return 0;
+                if (!values_equal(left.object.field_values[i], right.object.field_values[i])) return 0;
+            }
+            return 1;
+        case VAL_ARRAY:
+            if (left.array.count != right.array.count) return 0;
+            for (size_t i = 0; i < left.array.count; i++) {
+                if (!values_equal(left.array.items[i], right.array.items[i])) return 0;
+            }
+            return 1;
+    }
+    return 0;
 }
 
 //  Object Instantiation 
@@ -429,6 +525,9 @@ static Value eval_expr(Interp *interp, Expr *expr) {
         case EXPR_MEMBER: {
             VarEntry *entry = varstore_get(&interp->vars, expr->member.object);
             if (!entry) ERROR_F(0, "undefined variable '%s'", expr->member.object);
+            if (entry->value.kind == VAL_ARRAY && strcmp(expr->member.field, "length") == 0) {
+                return make_int((long)entry->value.array.count);
+            }
             if (entry->value.kind != VAL_OBJECT) {
                 ERROR_F(0, "'%s' is not an object", expr->member.object);
             }
@@ -440,6 +539,36 @@ static Value eval_expr(Interp *interp, Expr *expr) {
             }
             ERROR_F(0, "unknown field '%s' on '%s'", expr->member.field, expr->member.object);
             return make_int(0);
+        }
+
+        case EXPR_INDEX: {
+            Value array_value = eval_expr(interp, expr->index.array);
+            Value index_value = eval_expr(interp, expr->index.index);
+
+            if (array_value.kind != VAL_ARRAY) {
+                ERROR_F(0, "cannot index non-array value");
+            }
+            if (index_value.kind != VAL_INT) {
+                ERROR_F(0, "array index must be Int");
+            }
+
+            long index = index_value.integer;
+            if (index < 0 || (size_t)index >= array_value.array.count) {
+                ERROR_F(0, "array index out of range");
+            }
+
+            return array_value.array.items[index];
+        }
+
+        case EXPR_ARRAY: {
+            Value *items = NULL;
+            if (expr->array.count > 0) {
+                items = malloc(expr->array.count * sizeof(Value));
+                for (size_t i = 0; i < expr->array.count; i++) {
+                    items[i] = eval_expr(interp, expr->array.items[i]);
+                }
+            }
+            return make_array(items, expr->array.count);
         }
 
         case EXPR_BINARY: {
@@ -484,20 +613,10 @@ static Value eval_expr(Interp *interp, Expr *expr) {
             }
 
             if (strcmp(op, "==") == 0) {
-                if (l.kind == VAL_STRING && r.kind == VAL_STRING)
-                    return make_bool(strcmp(l.string, r.string) == 0);
-                if (l.kind == VAL_BOOL && r.kind == VAL_BOOL)
-                    return make_bool(l.boolean == r.boolean);
-                double lv = l.kind == VAL_FLOAT ? l.floating : l.integer;
-                double rv = r.kind == VAL_FLOAT ? r.floating : r.integer;
-                return make_bool(lv == rv);
+                return make_bool(values_equal(l, r));
             }
             if (strcmp(op, "!=") == 0) {
-                if (l.kind == VAL_STRING && r.kind == VAL_STRING)
-                    return make_bool(strcmp(l.string, r.string) != 0);
-                double lv = l.kind == VAL_FLOAT ? l.floating : l.integer;
-                double rv = r.kind == VAL_FLOAT ? r.floating : r.integer;
-                return make_bool(lv != rv);
+                return make_bool(!values_equal(l, r));
             }
             if (strcmp(op, ">")  == 0) {
                 double lv = l.kind == VAL_FLOAT ? l.floating : l.integer;

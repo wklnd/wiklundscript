@@ -22,6 +22,7 @@ typedef enum {
     // Punctuation
     TOKEN_LPAREN, TOKEN_RPAREN,
     TOKEN_LBRACE, TOKEN_RBRACE,
+    TOKEN_LBRACKET, TOKEN_RBRACKET,
     TOKEN_DOT, TOKEN_COMMA,
 
     // Control

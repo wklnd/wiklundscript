@@ -178,6 +178,8 @@ TokenList lexer_tokenize(const char *source) {
             case ')': push_token(&s, TOKEN_RPAREN, ")",  s.line); break;
             case '{': push_token(&s, TOKEN_LBRACE, "{",  s.line); break;
             case '}': push_token(&s, TOKEN_RBRACE, "}",  s.line); break;
+            case '[': push_token(&s, TOKEN_LBRACKET, "[", s.line); break;
+            case ']': push_token(&s, TOKEN_RBRACKET, "]", s.line); break;
             case '.': push_token(&s, TOKEN_DOT,    ".",  s.line); break;
             case ',': push_token(&s, TOKEN_COMMA,  ",",  s.line); break;
             default:

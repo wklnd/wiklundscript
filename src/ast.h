@@ -18,6 +18,8 @@ typedef enum {
     EXPR_LITERAL,
     EXPR_VARIABLE,
     EXPR_MEMBER,
+    EXPR_INDEX,
+    EXPR_ARRAY,
     EXPR_BINARY,
     EXPR_CALL,
 } ExprKind;
@@ -39,6 +41,16 @@ typedef struct {
 } MemberExpr;
 
 typedef struct {
+    Expr *array;
+    Expr *index;
+} IndexExpr;
+
+typedef struct {
+    Expr **items;
+    size_t count;
+} ArrayExpr;
+
+typedef struct {
     Expr *left;
     char *op;
     Expr *right;
@@ -56,6 +68,8 @@ struct Expr {
         LiteralExpr  literal;
         VariableExpr variable;
         MemberExpr   member;
+        IndexExpr    index;
+        ArrayExpr    array;
         BinaryExpr   binary;
         CallExpr     call;
     };

@@ -22,6 +22,18 @@ void expr_free(Expr *expr) {
             free(expr->member.field);
             break;
 
+        case EXPR_INDEX:
+            expr_free(expr->index.array);
+            expr_free(expr->index.index);
+            break;
+
+        case EXPR_ARRAY:
+            for (size_t i = 0; i < expr->array.count; i++) {
+                expr_free(expr->array.items[i]);
+            }
+            free(expr->array.items);
+            break;
+
         case EXPR_BINARY:
             expr_free(expr->binary.left);
             expr_free(expr->binary.right);

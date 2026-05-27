@@ -16,7 +16,7 @@ const pi = 3.14     # Immutable
 ```
 
 ### Types
-`String`, `Int`, `Float`, `Bool`
+`String`, `Int`, `Float`, `Bool`, `Array`
 
 ### Operators
 Arithmetic: `+`, `-`, `*`, `/`
@@ -116,6 +116,16 @@ var p = Point
 p.x = 10
 p.y = 20
 print(p.x)  # Output: 10
+```
+
+### Arrays
+
+```ws
+var items = [1, "two", true, [3, 4]]
+print(items)
+print(items.length)
+print(items[0])
+print(items[3][1])
 ```
 
 ---
