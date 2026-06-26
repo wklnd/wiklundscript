@@ -10,7 +10,8 @@ SRCS    = $(SRCDIR)/main.c \
           $(SRCDIR)/parser.c \
           $(SRCDIR)/interpreter.c
 OBJS    = $(SRCS:.c=.o)
-NATIVE_TARGETS = $(NATIVEDIR)/libDateTime.so $(NATIVEDIR)/libTime.so $(NATIVEDIR)/libRandom.so $(NATIVEDIR)/libString.so $(NATIVEDIR)/libIO.so $(NATIVEDIR)/libMath.so
+RAYLIB_PREFIX  = /opt/homebrew/opt/raylib
+NATIVE_TARGETS = $(NATIVEDIR)/libDateTime.so $(NATIVEDIR)/libTime.so $(NATIVEDIR)/libRandom.so $(NATIVEDIR)/libString.so $(NATIVEDIR)/libIO.so $(NATIVEDIR)/libMath.so $(NATIVEDIR)/libColor.so $(NATIVEDIR)/libcolor.so $(NATIVEDIR)/libGraphics.so
 
 # ─── Build ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,20 @@ $(NATIVEDIR)/libIO.so: $(NATIVEDIR)/IO.c $(NATIVE_HDR)
 
 $(NATIVEDIR)/libMath.so: $(NATIVEDIR)/Math.c $(NATIVE_HDR)
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $< -lm
+
+$(NATIVEDIR)/libColor.so: $(NATIVEDIR)/Color.c $(NATIVE_HDR)
+	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
+
+$(NATIVEDIR)/libcolor.so: $(NATIVEDIR)/Color.c $(NATIVE_HDR)
+	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
+
+$(NATIVEDIR)/libGraphics.so: $(NATIVEDIR)/Graphics.c $(NATIVE_HDR)
+	$(CC) $(CFLAGS) -fPIC -shared -o $@ $< \
+		-I$(RAYLIB_PREFIX)/include \
+		-L$(RAYLIB_PREFIX)/lib \
+		-lraylib \
+		-framework CoreVideo -framework IOKit -framework Cocoa \
+		-framework GLUT -framework OpenGL
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

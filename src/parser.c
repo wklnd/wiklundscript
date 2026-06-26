@@ -98,17 +98,18 @@ static void exprlist_push(ExprList *el, Expr *e) {
 static Stmt *parse_statement(Parser *p);
 static Expr *parse_expression(Parser *p);
 
-//  Block Parsing 
+//  Block Parsing
 
 static StmtList parse_block(Parser *p) {
     StmtList sl;
     stmtlist_init(&sl);
+    expect(p, TOKEN_INDENT, "expected indented block");
     skip_newlines(p);
-    while (!is_at_end(p) && !check(p, TOKEN_END)) {
+    while (!is_at_end(p) && !check(p, TOKEN_DEDENT)) {
         stmtlist_push(&sl, parse_statement(p));
         skip_newlines(p);
     }
-    expect(p, TOKEN_END, "expected 'end'");
+    if (check(p, TOKEN_DEDENT)) advance(p);
     return sl;
 }
 
@@ -320,12 +321,13 @@ static Expr *parse_comparison(Parser *p) {
 
     while (check(p, TOKEN_EQ)  || check(p, TOKEN_NEQ) ||
            check(p, TOKEN_GT)  || check(p, TOKEN_LT)  ||
-           check(p, TOKEN_GTE) || check(p, TOKEN_LTE)) {
+           check(p, TOKEN_GTE) || check(p, TOKEN_LTE) ||
+           check(p, TOKEN_IS)) {
         Token *op    = advance(p);
         Expr  *right = parse_addsub(p);
         Expr  *e     = make_expr(EXPR_BINARY);
         e->binary.left  = left;
-        e->binary.op    = strdup(op->value);
+        e->binary.op    = op->type == TOKEN_IS ? strdup("==") : strdup(op->value);
         e->binary.right = right;
         left = e;
     }
@@ -362,10 +364,16 @@ static Stmt *parse_var_decl(Parser *p) {
 
 static Stmt *parse_print(Parser *p) {
     int line = peek(p)->line;
-    advance(p); // consume 'print'
-    expect(p, TOKEN_LPAREN, "expected '('");
-    Expr *value = parse_expression(p);
-    expect(p, TOKEN_RPAREN, "expected ')'");
+    advance(p); // consume 'print' or 'say'
+
+    Expr *value;
+    if (check(p, TOKEN_LPAREN)) {
+        advance(p);
+        value = parse_expression(p);
+        expect(p, TOKEN_RPAREN, "expected ')'");
+    } else {
+        value = parse_expression(p);
+    }
 
     Stmt *s = make_stmt(STMT_PRINT, line);
     s->print.value = value;
@@ -378,26 +386,17 @@ static Stmt *parse_if(Parser *p) {
     Expr *condition = parse_expression(p);
     skip_newlines(p);
 
-    StmtList body, else_body;
-    stmtlist_init(&body);
-    stmtlist_init(&else_body);
-    int in_else = 0;
+    StmtList body = parse_block(p);
 
-    while (!is_at_end(p) && !check(p, TOKEN_END)) {
-        if (check(p, TOKEN_ELSE)) {
-            advance(p);
-            skip_newlines(p);
-            in_else = 1;
-            continue;
-        }
-        if (in_else) {
-            stmtlist_push(&else_body, parse_statement(p));
-        } else {
-            stmtlist_push(&body, parse_statement(p));
-        }
+    StmtList else_body;
+    stmtlist_init(&else_body);
+
+    skip_newlines(p);
+    if (check(p, TOKEN_ELSE)) {
+        advance(p);
         skip_newlines(p);
+        else_body = parse_block(p);
     }
-    expect(p, TOKEN_END, "expected 'end'");
 
     Stmt *s = make_stmt(STMT_IF, line);
     s->if_stmt.condition  = condition;
@@ -408,43 +407,13 @@ static Stmt *parse_if(Parser *p) {
     return s;
 }
 
-static Stmt *parse_repeat(Parser *p) {
+static Stmt *parse_loop(Parser *p) {
     int line = peek(p)->line;
-    advance(p); // consume 'repeat'
+    advance(p); // consume 'loop'
 
-    // repeat while <condition>
-    if (check(p, TOKEN_WHILE)) {
-        advance(p);
-        Expr     *condition = parse_expression(p);
-        skip_newlines(p);
-        StmtList  sl        = parse_block(p);
-
-        Stmt *s = make_stmt(STMT_REPEAT_WHILE, line);
-        s->repeat_while.condition  = condition;
-        s->repeat_while.body       = sl.items;
-        s->repeat_while.body_count = sl.count;
-        return s;
-    }
-
-    // repeat <N> times as <i>
     Expr  *count    = parse_expression(p);
-    expect(p, TOKEN_TIMES, "expected 'times'");
-    expect(p, TOKEN_AS,    "expected 'as'");
+    expect(p, TOKEN_AS, "expected 'as'");
     Token *iterator = expect(p, TOKEN_IDENTIFIER, "expected iterator name");
-
-    // One-liner: something on the same line
-    if (!check(p, TOKEN_NEWLINE) && !is_at_end(p)) {
-        Stmt *body_stmt = parse_statement(p);
-        Stmt *s = make_stmt(STMT_REPEAT_TIMES, line);
-        s->repeat_times.count      = count;
-        s->repeat_times.iterator   = strdup(iterator->value);
-        s->repeat_times.body       = malloc(sizeof(Stmt *));
-        s->repeat_times.body[0]    = body_stmt;
-        s->repeat_times.body_count = 1;
-        return s;
-    }
-
-    // Block form
     skip_newlines(p);
     StmtList sl = parse_block(p);
 
@@ -456,21 +425,41 @@ static Stmt *parse_repeat(Parser *p) {
     return s;
 }
 
+static Stmt *parse_while(Parser *p) {
+    int line = peek(p)->line;
+    advance(p); // consume 'while'
+
+    Expr     *condition = parse_expression(p);
+    skip_newlines(p);
+    StmtList  sl        = parse_block(p);
+
+    Stmt *s = make_stmt(STMT_REPEAT_WHILE, line);
+    s->repeat_while.condition  = condition;
+    s->repeat_while.body       = sl.items;
+    s->repeat_while.body_count = sl.count;
+    return s;
+}
+
 static Stmt *parse_func_decl(Parser *p) {
     int   line = peek(p)->line;
     advance(p); // consume 'func'
     Token *name = expect(p, TOKEN_IDENTIFIER, "expected function name");
 
-    // Collect params (identifiers before newline)
     char  **params      = malloc(8 * sizeof(char *));
     size_t  param_count = 0;
     size_t  param_cap   = 8;
-    while (check(p, TOKEN_IDENTIFIER)) {
-        if (param_count >= param_cap) {
-            param_cap *= 2;
-            params = realloc(params, param_cap * sizeof(char *));
+
+    if (check(p, TOKEN_LPAREN)) {
+        advance(p);
+        while (!check(p, TOKEN_RPAREN) && !is_at_end(p)) {
+            if (param_count >= param_cap) {
+                param_cap *= 2;
+                params = realloc(params, param_cap * sizeof(char *));
+            }
+            params[param_count++] = strdup(expect(p, TOKEN_IDENTIFIER, "expected parameter name")->value);
+            if (check(p, TOKEN_COMMA)) advance(p);
         }
-        params[param_count++] = strdup(advance(p)->value);
+        expect(p, TOKEN_RPAREN, "expected ')'");
     }
 
     skip_newlines(p);
@@ -489,14 +478,16 @@ static Stmt *parse_object_decl(Parser *p) {
     int   line = peek(p)->line;
     advance(p); // consume 'object'
     Token *name = expect(p, TOKEN_IDENTIFIER, "expected object name");
-    expect(p, TOKEN_LBRACE, "expected '{'");
     skip_newlines(p);
 
     FieldDef *fields     = malloc(8 * sizeof(FieldDef));
     size_t    field_count = 0;
     size_t    field_cap   = 8;
 
-    while (!is_at_end(p) && !check(p, TOKEN_RBRACE)) {
+    expect(p, TOKEN_INDENT, "expected indented block");
+    skip_newlines(p);
+
+    while (!is_at_end(p) && !check(p, TOKEN_DEDENT)) {
         if (field_count >= field_cap) {
             field_cap *= 2;
             fields = realloc(fields, field_cap * sizeof(FieldDef));
@@ -509,7 +500,7 @@ static Stmt *parse_object_decl(Parser *p) {
         field_count++;
         skip_newlines(p);
     }
-    expect(p, TOKEN_RBRACE, "expected '}'");
+    if (check(p, TOKEN_DEDENT)) advance(p);
 
     Stmt *s = make_stmt(STMT_OBJECT_DECL, line);
     s->object_decl.name        = strdup(name->value);
@@ -522,13 +513,19 @@ static Stmt *parse_import(Parser *p) {
     int line = peek(p)->line;
     advance(p); // consume 'import'
     Token *module = expect(p, TOKEN_IDENTIFIER, "expected module name");
-    expect(p, TOKEN_DOT, "expected '.'");
 
     Stmt *s = make_stmt(STMT_IMPORT, line);
-    s->import_stmt.module = strdup(module->value);
-    s->import_stmt.fields = NULL;
+    s->import_stmt.module      = strdup(module->value);
+    s->import_stmt.fields      = NULL;
     s->import_stmt.field_count = 0;
     s->import_stmt.is_wildcard = 0;
+
+    // bare import with no dot: treat as wildcard
+    if (!check(p, TOKEN_DOT)) {
+        s->import_stmt.is_wildcard = 1;
+        return s;
+    }
+    advance(p); // consume '.'
 
     // wildcard: Module.*
     if (check(p, TOKEN_STAR)) {
@@ -537,14 +534,12 @@ static Stmt *parse_import(Parser *p) {
         return s;
     }
 
-    // first field
+    // specific fields
     Token *field = expect(p, TOKEN_IDENTIFIER, "expected field name");
-    // dynamic array for fields
     size_t cap = 4;
     s->import_stmt.fields = malloc(cap * sizeof(char *));
     s->import_stmt.fields[s->import_stmt.field_count++] = strdup(field->value);
 
-    // additional comma-separated fields
     while (check(p, TOKEN_COMMA)) {
         advance(p);
         Token *f = expect(p, TOKEN_IDENTIFIER, "expected field name");
@@ -622,9 +617,11 @@ static Stmt *parse_statement(Parser *p) {
     switch (peek(p)->type) {
         case TOKEN_VAR:
         case TOKEN_CONST:      return parse_var_decl(p);
-        case TOKEN_PRINT:      return parse_print(p);
+        case TOKEN_PRINT:
+        case TOKEN_SAY:        return parse_print(p);
         case TOKEN_IF:         return parse_if(p);
-        case TOKEN_REPEAT:     return parse_repeat(p);
+        case TOKEN_LOOP:       return parse_loop(p);
+        case TOKEN_WHILE:      return parse_while(p);
         case TOKEN_FUNC:       return parse_func_decl(p);
         case TOKEN_OBJECT:     return parse_object_decl(p);
         case TOKEN_IMPORT:     return parse_import(p);

@@ -2,6 +2,7 @@ import Time.*
 import String.*
 import Math.*
 import Random.*
+import color.*
 
 func section title
   print("")
@@ -10,56 +11,98 @@ func section title
   print("================================")
 end
 
-object Pilot {
-  name = String
-  rank = String
-  score = Int
-  shields = Int
+import Time.*
+import String.*
+import Math.*
+import Random.*
+import color.*
+
+func section title
+  print("")
+  print(colorize("================================", "dim"))
+  print(colorize(">>> " + doStringUppercase(title) + " <<<", "bold"))
+  print(colorize("================================", "dim"))
+end
+
+object ConsoleDemo {
+  app = String
+  build = String
+  mode = String
+  latency = Float
+  packets = Int
+  errors = Int
 }
 
-var pilot = Pilot
-pilot.name = "Nova"
-pilot.rank = "rookie"
-pilot.score = 0
-pilot.shields = 100
+var demo = ConsoleDemo
+demo.app = "wscript"
+demo.build = "2026.06"
+demo.mode = "tech demo"
+demo.latency = 12.4
+demo.packets = 0
+demo.errors = 0
 
-section("mission start")
-print("date: " + getDate())
-print("tomorrow: " + getTomorrow())
-print("build mood: " + doStringCapitalize("wscript is alive"))
-print("mirror signal: " + doStringReverse("orbit"))
-print("identity length: " + getStringLength(pilot.name))
-print("sleeping for a moment...")
+section("boot sequence")
+print(colorize("> loading modules...", "cyan"))
+print(colorize("> time api: ready", "green"))
+print(colorize("> string api: ready", "green"))
+print(colorize("> math api: ready", "green"))
+print(colorize("> random api: ready", "green"))
+print(colorize("> color api: glowing", "magenta"))
+print(colorize("> renderer: ANSI terminal", "yellow"))
+print(colorize("> theme: neon control room", "blue"))
+print(colorize("> build: " + demo.build, "white"))
+print(colorize("> app: " + demo.app, "cyan"))
 sleep(0.1)
-print("awake")
+print(bold(green("boot complete")))
+print(colorize("boot complete", "underline"))
 
-section("pilot profile")
-print("name: " + pilot.name)
-print("rank: " + pilot.rank)
-print("score: " + pilot.score)
-print("shields: " + pilot.shields)
+print(colorize("=== palette smoke test ===", "bold"))
+print(colorize("red", "red"))
+print(colorize("green", "green"))
+print(colorize("yellow", "yellow"))
+print(colorize("blue", "blue"))
+print(colorize("magenta", "magenta"))
+print(colorize("cyan", "cyan"))
+print(colorize("white", "white"))
+print(colorize("black", "black"))
+print(colorize("dim", "dim"))
+print(colorize("underline", "underline"))
+print(colorize("bold", "bold"))
 
-if doStringEquals(pilot.name, "Nova")
-  print("identity check: ok")
+section("live dashboard")
+print(colorize("mode: " + demo.mode, "cyan"))
+print(colorize("status: online", "green"))
+print(colorize("status light: bright", "yellow"))
+print(colorize("transport: stable", "blue"))
+print(colorize("console name: " + doStringCapitalize(demo.app), "magenta"))
+print(colorize("session id length: " + getStringLength(demo.build), "white"))
+print(colorize("echo test: " + doStringReverse("packet"), "dim"))
+
+if doStringEquals(demo.app, "wscript")
+  print(colorize("app check: ok", "green"))
+  print(colorize("app check: extra crisp", "bold"))
 end
 
-section("training run")
-var trials = 3
-repeat trials times as i
-  var roll = getRandomInt(1, 6)
-  pilot.score = pilot.score + roll
-  pilot.shields = pilot.shields - 3
-  print("trial " + (i + 1) + ": roll=" + roll + ", score=" + pilot.score + ", shields=" + pilot.shields)
+section("throughput loop")
+var frames = 3
+repeat frames times as i
+  var tick = getRandomInt(10, 99)
+  demo.packets = demo.packets + tick
+  demo.latency = demo.latency + 0.5
+  print(colorize("frame " + (i + 1) + ": packets=" + demo.packets + ", tick=" + tick, "cyan"))
+  print(colorize("frame " + (i + 1) + ": latency=" + demo.latency, "yellow"))
+  print(colorize("frame " + (i + 1) + ": vibing", "magenta"))
 end
 
-section("signal sweep")
-var pulse = 0
-repeat while pulse < 3
-  print("pulse " + (pulse + 1) + ": " + doStringUppercase("stable"))
-  pulse = pulse + 1
-end
+section("string lab")
+print(colorize("reverse: " + doStringReverse("terminal"), "blue"))
+print(colorize("capitalize: " + doStringCapitalize("neon console"), "green"))
+print(colorize("uppercase: " + doStringUppercase("signal strong"), "yellow"))
+print(colorize("lowercase: " + doStringLowercase("LOUD OUTPUT"), "cyan"))
+print(colorize("concat: " + doStringConcat("tech", " ", "demo", " ", "mode"), "magenta"))
+print(colorize("length: " + getStringLength("hardware"), "white"))
 
-section("math lab")
+section("math benchmark")
 var angle = -3.7
 var rounded = round(angle)
 var floored = floor(angle)
@@ -69,21 +112,35 @@ var smallest = min(42, 7, 18, 3, 99)
 var biggest = max(42, 7, 18, 3, 99)
 var drift = abs(-12)
 
-print("angle: " + angle)
-print("rounded: " + rounded)
-print("floored: " + floored)
-print("sqrt(49): " + root)
-print("2^5: " + wave)
-print("min: " + smallest)
-print("max: " + biggest)
-print("abs(-12): " + drift)
+print(colorize("angle: " + angle, "cyan"))
+print(colorize("rounded: " + rounded, "green"))
+print(colorize("floored: " + floored, "yellow"))
+print(colorize("sqrt(49): " + root, "magenta"))
+print(colorize("2^5: " + wave, "blue"))
+print(colorize("min: " + smallest, "white"))
+print(colorize("max: " + biggest, "red"))
+print(colorize("abs(-12): " + drift, "dim"))
+print(colorize("math benchmark: finished", "bold"))
 
-section("final checksum")
-var checksum = getStringLength(pilot.name) + pilot.score + rounded + floored + root + wave + smallest + biggest + drift
-print("checksum: " + checksum)
+section("final readout")
+var checksum = getStringLength(demo.app) + demo.packets + rounded + floored + root + wave + smallest + biggest + drift
+demo.errors = 0
+
+print(colorize("packets: " + demo.packets, "cyan"))
+print(colorize("latency: " + demo.latency, "yellow"))
+print(colorize("errors: " + demo.errors, "green"))
+print(colorize("checksum: " + checksum, "white"))
 
 if checksum > 0
-  print("status: green")
+  print(colorize("status: good", "green"))
+  print(colorize("status: good", "bold"))
+  print(colorize("demo vibe: polished", "magenta"))
 else
-  print("status: red")
+  print(colorize("status: bad", "red"))
+  print(colorize("status: bad", "bold"))
+  print(colorize("demo vibe: loud", "yellow"))
 end
+
+print(colorize("tech demo complete", "bold"))
+print(colorize("tech demo complete", "cyan"))
+print(colorize("tech demo complete", "magenta"))

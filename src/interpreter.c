@@ -715,18 +715,11 @@ static void exec_stmt(Interp *interp, Stmt *stmt) {
 
         case STMT_ASSIGN: {
             VarEntry *existing = varstore_get(&interp->vars, stmt->assign.target);
-            if (!existing)              ERROR_F(stmt->line, "undefined variable '%s'", stmt->assign.target);
-            if (!existing->is_mutable)  ERROR_F(stmt->line, "cannot reassign constant '%s'", stmt->assign.target);
-
-            Value value = eval_expr(interp, stmt->assign.value);
-            if (existing->value.kind != value.kind) {
-                ERROR_F(stmt->line,
-                    "type error: '%s' is %s, cannot assign %s",
-                    stmt->assign.target,
-                    valkind_name(existing->value.kind),
-                    valkind_name(value.kind));
+            if (existing && !existing->is_mutable) {
+                ERROR_F(stmt->line, "cannot reassign constant '%s'", stmt->assign.target);
             }
-            existing->value = value;
+            Value value = eval_expr(interp, stmt->assign.value);
+            varstore_set(&interp->vars, stmt->assign.target, value, 1);
             break;
         }
 

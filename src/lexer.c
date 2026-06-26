@@ -6,16 +6,17 @@
 #include <string.h>
 #include <ctype.h>
 
-//  Internal State 
+#define INDENT_MAX 256
 
 typedef struct {
     const char *source;
     size_t      pos;
     int         line;
+    int         at_line_start;
+    int         indent_stack[INDENT_MAX];
+    int         indent_top;
     TokenList   list;
 } LexerState;
-
-//  Helpers 
 
 static void push_token(LexerState *s, TokenType type, const char *value, int line) {
     if (s->list.count >= s->list.capacity) {
@@ -29,42 +30,22 @@ static void push_token(LexerState *s, TokenType type, const char *value, int lin
     };
 }
 
-static char peek(LexerState *s) {
-    return s->source[s->pos];
-}
-
-static char peek_next(LexerState *s) {
-    return s->source[s->pos + 1];
-}
-
-static char advance(LexerState *s) {
-    return s->source[s->pos++];
-}
-
-static void skip_spaces(LexerState *s) {
-    while (peek(s) == ' ' || peek(s) == '\t' || peek(s) == '\r') {
-        s->pos++;
-    }
-}
-
 static void skip_comment(LexerState *s) {
-    while (peek(s) != '\n' && peek(s) != '\0') {
+    while (s->source[s->pos] != '\n' && s->source[s->pos] != '\0') {
         s->pos++;
     }
 }
-
-//  Readers 
 
 static void read_string(LexerState *s) {
     int line = s->line;
-    s->pos++; // skip opening "
+    s->pos++;
 
     size_t start = s->pos;
-    while (peek(s) != '"' && peek(s) != '\0') {
+    while (s->source[s->pos] != '"' && s->source[s->pos] != '\0') {
         s->pos++;
     }
 
-    if (peek(s) != '"') {
+    if (s->source[s->pos] != '"') {
         ERROR("unterminated string", line);
     }
 
@@ -75,14 +56,14 @@ static void read_string(LexerState *s) {
 
     push_token(s, TOKEN_STRING, buf, line);
     free(buf);
-    s->pos++; // skip closing "
+    s->pos++;
 }
 
 static void read_number(LexerState *s) {
     int    line  = s->line;
     size_t start = s->pos;
 
-    while (isdigit(peek(s)) || peek(s) == '.') {
+    while (isdigit(s->source[s->pos]) || s->source[s->pos] == '.') {
         s->pos++;
     }
 
@@ -99,7 +80,7 @@ static void read_word(LexerState *s) {
     int    line  = s->line;
     size_t start = s->pos;
 
-    while (isalnum(peek(s)) || peek(s) == '_') {
+    while (isalnum(s->source[s->pos]) || s->source[s->pos] == '_') {
         s->pos++;
     }
 
@@ -108,16 +89,14 @@ static void read_word(LexerState *s) {
     memcpy(buf, s->source + start, len);
     buf[len] = '\0';
 
-    // Keyword table
     TokenType type = TOKEN_IDENTIFIER;
     if      (strcmp(buf, "var")    == 0) type = TOKEN_VAR;
     else if (strcmp(buf, "const")  == 0) type = TOKEN_CONST;
     else if (strcmp(buf, "print")  == 0) type = TOKEN_PRINT;
+    else if (strcmp(buf, "say")    == 0) type = TOKEN_SAY;
     else if (strcmp(buf, "if")     == 0) type = TOKEN_IF;
     else if (strcmp(buf, "else")   == 0) type = TOKEN_ELSE;
-    else if (strcmp(buf, "end")    == 0) type = TOKEN_END;
-    else if (strcmp(buf, "repeat") == 0) type = TOKEN_REPEAT;
-    else if (strcmp(buf, "times")  == 0) type = TOKEN_TIMES;
+    else if (strcmp(buf, "loop")   == 0) type = TOKEN_LOOP;
     else if (strcmp(buf, "as")     == 0) type = TOKEN_AS;
     else if (strcmp(buf, "while")  == 0) type = TOKEN_WHILE;
     else if (strcmp(buf, "func")   == 0) type = TOKEN_FUNC;
@@ -126,65 +105,107 @@ static void read_word(LexerState *s) {
     else if (strcmp(buf, "true")   == 0) type = TOKEN_TRUE;
     else if (strcmp(buf, "false")  == 0) type = TOKEN_FALSE;
     else if (strcmp(buf, "import") == 0) type = TOKEN_IMPORT;
+    else if (strcmp(buf, "is")     == 0) type = TOKEN_IS;
 
     push_token(s, type, buf, line);
     free(buf);
 }
 
-//  Main Tokenizer 
-
 TokenList lexer_tokenize(const char *source) {
     LexerState s = {
-        .source = source,
-        .pos    = 0,
-        .line   = 1,
-        .list   = {
+        .source        = source,
+        .pos           = 0,
+        .line          = 1,
+        .at_line_start = 1,
+        .indent_stack  = {0},
+        .indent_top    = 0,
+        .list          = {
             .tokens   = malloc(64 * sizeof(Token)),
             .count    = 0,
             .capacity = 64,
         },
     };
 
-    while (peek(&s) != '\0') {
-        skip_spaces(&s);
-        if (peek(&s) == '\0') break;
+    while (s.source[s.pos] != '\0') {
 
-        char c = peek(&s);
+        // At the start of a new line: handle indentation
+        if (s.at_line_start) {
+            int indent = 0;
+            while (s.source[s.pos] == ' ' || s.source[s.pos] == '\t') {
+                indent++;
+                s.pos++;
+            }
+
+            char c = s.source[s.pos];
+
+            // Blank line or comment — skip entirely, stay at line start
+            if (c == '\n') { s.line++; s.pos++; continue; }
+            if (c == '#')  { skip_comment(&s); continue; }
+            if (c == '\0') break;
+
+            // Emit INDENT or DEDENT(s) based on indent change
+            int current = s.indent_stack[s.indent_top];
+            if (indent > current) {
+                s.indent_stack[++s.indent_top] = indent;
+                push_token(&s, TOKEN_INDENT, "", s.line);
+            } else {
+                while (indent < s.indent_stack[s.indent_top]) {
+                    s.indent_top--;
+                    push_token(&s, TOKEN_DEDENT, "", s.line);
+                }
+            }
+
+            s.at_line_start = 0;
+            continue;
+        }
+
+        char c = s.source[s.pos];
+
+        if (c == ' ' || c == '\t' || c == '\r') { s.pos++; continue; }
+
+        if (c == '\n') {
+            push_token(&s, TOKEN_NEWLINE, "\n", s.line);
+            s.line++;
+            s.pos++;
+            s.at_line_start = 1;
+            continue;
+        }
 
         if (c == '#')  { skip_comment(&s); continue; }
-        if (c == '\n') { push_token(&s, TOKEN_NEWLINE, "\n", s.line); s.line++; s.pos++; continue; }
         if (c == '"')  { read_string(&s); continue; }
         if (isdigit(c)){ read_number(&s); continue; }
         if (isalpha(c) || c == '_') { read_word(&s); continue; }
 
-        // Two-character operators
-        char next = peek_next(&s);
+        char next = s.source[s.pos + 1];
         if (c == '=' && next == '=') { push_token(&s, TOKEN_EQ,  "==", s.line); s.pos += 2; continue; }
         if (c == '!' && next == '=') { push_token(&s, TOKEN_NEQ, "!=", s.line); s.pos += 2; continue; }
         if (c == '>' && next == '=') { push_token(&s, TOKEN_GTE, ">=", s.line); s.pos += 2; continue; }
         if (c == '<' && next == '=') { push_token(&s, TOKEN_LTE, "<=", s.line); s.pos += 2; continue; }
 
-        // Single-character operators
-        advance(&s);
+        s.pos++;
         switch (c) {
-            case '=': push_token(&s, TOKEN_ASSIGN, "=",  s.line); break;
-            case '+': push_token(&s, TOKEN_PLUS,   "+",  s.line); break;
-            case '-': push_token(&s, TOKEN_MINUS,  "-",  s.line); break;
-            case '*': push_token(&s, TOKEN_STAR,   "*",  s.line); break;
-            case '/': push_token(&s, TOKEN_SLASH,  "/",  s.line); break;
-            case '>': push_token(&s, TOKEN_GT,     ">",  s.line); break;
-            case '<': push_token(&s, TOKEN_LT,     "<",  s.line); break;
-            case '(': push_token(&s, TOKEN_LPAREN, "(",  s.line); break;
-            case ')': push_token(&s, TOKEN_RPAREN, ")",  s.line); break;
-            case '{': push_token(&s, TOKEN_LBRACE, "{",  s.line); break;
-            case '}': push_token(&s, TOKEN_RBRACE, "}",  s.line); break;
-            case '[': push_token(&s, TOKEN_LBRACKET, "[", s.line); break;
-            case ']': push_token(&s, TOKEN_RBRACKET, "]", s.line); break;
-            case '.': push_token(&s, TOKEN_DOT,    ".",  s.line); break;
-            case ',': push_token(&s, TOKEN_COMMA,  ",",  s.line); break;
+            case '=': push_token(&s, TOKEN_ASSIGN,   "=",  s.line); break;
+            case '+': push_token(&s, TOKEN_PLUS,     "+",  s.line); break;
+            case '-': push_token(&s, TOKEN_MINUS,    "-",  s.line); break;
+            case '*': push_token(&s, TOKEN_STAR,     "*",  s.line); break;
+            case '/': push_token(&s, TOKEN_SLASH,    "/",  s.line); break;
+            case '>': push_token(&s, TOKEN_GT,       ">",  s.line); break;
+            case '<': push_token(&s, TOKEN_LT,       "<",  s.line); break;
+            case '(': push_token(&s, TOKEN_LPAREN,   "(",  s.line); break;
+            case ')': push_token(&s, TOKEN_RPAREN,   ")",  s.line); break;
+            case '[': push_token(&s, TOKEN_LBRACKET, "[",  s.line); break;
+            case ']': push_token(&s, TOKEN_RBRACKET, "]",  s.line); break;
+            case '.': push_token(&s, TOKEN_DOT,      ".",  s.line); break;
+            case ',': push_token(&s, TOKEN_COMMA,    ",",  s.line); break;
             default:
                 ERROR_F(s.line, "unexpected character '%c'", c);
         }
+    }
+
+    // Emit remaining DEDENTs at end of file
+    while (s.indent_top > 0) {
+        s.indent_top--;
+        push_token(&s, TOKEN_DEDENT, "", s.line);
     }
 
     push_token(&s, TOKEN_EOF, "", s.line);
@@ -196,7 +217,7 @@ void lexer_free(TokenList *list) {
         free(list->tokens[i].value);
     }
     free(list->tokens);
-    list->tokens  = NULL;
-    list->count   = 0;
+    list->tokens   = NULL;
+    list->count    = 0;
     list->capacity = 0;
 }

@@ -167,3 +167,16 @@ NativeValue String_doStringEquals(size_t argc, const char **argv) {
 
     return NATIVE_BOOL_VALUE(0);
 }
+
+// @TODO: Test this function
+NativeValue String_doStringContains(size_t argc, const char **argv) {
+    if (argc < 2) {
+        return NATIVE_BOOL_VALUE(0);
+    }
+
+    if (strstr(argv[0], argv[1]) != NULL) {
+        return NATIVE_BOOL_VALUE(1);
+    }
+
+    return NATIVE_BOOL_VALUE(0);
+}

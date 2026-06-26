@@ -24,6 +24,7 @@ import IO.readline
 import String.reverse
 import Random.getRandomInt
 import Math.floor
+import color.red
 ```
 
 The interpreter loads `native/libName.so` and resolves symbols named `Name_function`.
@@ -207,6 +208,76 @@ Notes:
 - `floor` and `round` return `Int` values.
 - `sqrt` and `pow` return `Float` values.
 - `min` and `max` preserve whole-number results when all inputs are whole numbers.
+
+## Color
+
+ANSI terminal color helpers.
+
+The module can be imported as either `Color` or `color`.
+
+### `red(text)`
+
+Wraps text in red ANSI escape codes.
+
+```ws
+import color.red
+
+print(red("error"))
+```
+
+### `green(text)`
+
+Wraps text in green ANSI escape codes.
+
+### `yellow(text)`
+
+Wraps text in yellow ANSI escape codes.
+
+### `blue(text)`
+
+Wraps text in blue ANSI escape codes.
+
+### `magenta(text)`
+
+Wraps text in magenta ANSI escape codes.
+
+### `cyan(text)`
+
+Wraps text in cyan ANSI escape codes.
+
+### `white(text)`
+
+Wraps text in white ANSI escape codes.
+
+### `black(text)`
+
+Wraps text in black ANSI escape codes.
+
+### `bold(text)`
+
+Wraps text in bold ANSI escape codes.
+
+### `dim(text)`
+
+Wraps text in dim ANSI escape codes.
+
+### `underline(text)`
+
+Wraps text in underlined ANSI escape codes.
+
+### `colorize(text, color)`
+
+Wraps text in the requested color or style.
+
+```ws
+import color.colorize
+
+print(colorize("ready", "cyan"))
+```
+
+### `reset()`
+
+Returns the ANSI reset sequence.
 
 ## Random
 

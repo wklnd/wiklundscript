@@ -4,12 +4,14 @@
 
 typedef enum {
     // Keywords
-    TOKEN_VAR, TOKEN_CONST, TOKEN_PRINT,
-    TOKEN_IF, TOKEN_ELSE, TOKEN_END,
-    TOKEN_REPEAT, TOKEN_TIMES, TOKEN_AS, TOKEN_WHILE,
+    TOKEN_VAR, TOKEN_CONST,
+    TOKEN_PRINT, TOKEN_SAY,
+    TOKEN_IF, TOKEN_ELSE,
+    TOKEN_LOOP, TOKEN_AS, TOKEN_WHILE,
     TOKEN_FUNC, TOKEN_OBJECT, TOKEN_RETURN,
     TOKEN_TRUE, TOKEN_FALSE,
     TOKEN_IMPORT,
+    TOKEN_IS,
 
     // Literals
     TOKEN_IDENTIFIER, TOKEN_STRING, TOKEN_NUMBER,
@@ -21,9 +23,11 @@ typedef enum {
 
     // Punctuation
     TOKEN_LPAREN, TOKEN_RPAREN,
-    TOKEN_LBRACE, TOKEN_RBRACE,
     TOKEN_LBRACKET, TOKEN_RBRACKET,
     TOKEN_DOT, TOKEN_COMMA,
+
+    // Indentation
+    TOKEN_INDENT, TOKEN_DEDENT,
 
     // Control
     TOKEN_NEWLINE,
@@ -32,7 +36,7 @@ typedef enum {
 
 typedef struct {
     TokenType   type;
-    char       *value;   // heap allocated, freed by lexer_free
+    char       *value;
     int         line;
 } Token;
 
